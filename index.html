@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sphere Shape + Cursor Displace</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="app"></div>
+  <div class="hud">
+    <div><b>Sphere Shape + Cursor Displace</b></div>
+    <div>Drag to orbit. Move cursor through the shape to displace spheres.</div>
+    <div>Upload PNG/JPG or a mesh (.glb/.gltf/.obj) to reshape the cloud.</div>
+    <div class="controls">
+      <select id="shapeSelect">
+        <option value="heart">Heart</option>
+        <option value="sphere">Sphere</option>
+        <option value="torus">Torus</option>
+        <option value="cube">Cube</option>
+        <option value="cone">Cone</option>
+        <option value="cylinder">Cylinder</option>
+        <option value="helix">Helix</option>
+        <option value="wave">Wave</option>
+        <option value="flower">Flower</option>
+        <option value="custom-image" disabled>Custom Image</option>
+        <option value="custom-mesh" disabled>Custom Mesh</option>
+      </select>
+      <input id="imageInput" type="file" accept="image/*" />
+      <input id="meshInput" type="file" accept=".glb,.gltf,.obj,model/gltf-binary,model/gltf+json" />
+      <button id="exportDataBtn" type="button">Export JSON</button>
+      <button id="exportWebflowBtn" type="button">Export Webflow HTML</button>
+    </div>
+    <div class="panel">
+      <label for="externalCount">External Count</label>
+      <input id="externalCount" type="range" min="100" max="20000" step="100" value="900" />
+      <label for="internalCount">Internal Count</label>
+      <input id="internalCount" type="range" min="0" max="10000" step="50" value="200" />
+      <label for="shapeScale">Shape Scale</label>
+      <input id="shapeScale" type="range" min="0.4" max="2.5" step="0.01" value="1" />
+      <label for="surfaceExternalOnly">Face Only</label>
+      <input id="surfaceExternalOnly" type="checkbox" />
+      <label for="faceMinTravel">Min Face Travel</label>
+      <input id="faceMinTravel" type="range" min="6" max="120" step="1" value="18" />
+      <label for="movementMode">Move Mode</label>
+      <select id="movementMode">
+        <option value="normal">Normal</option>
+        <option value="face-one-way">Face One-Way</option>
+        <option value="radial-4">Radial 4-Way</option>
+        <option value="tornado">Tornado</option>
+        <option value="football-pattern">Football Pattern</option>
+        <option value="basketball-pattern">Basketball Pattern</option>
+        <option value="static-detail">Static Detail</option>
+      </select>
+      <label for="internalMovement">Inner Move</label>
+      <select id="internalMovement">
+        <option value="normal">Normal</option>
+        <option value="static">Static</option>
+        <option value="match">Match Outer</option>
+      </select>
+      <label for="gridEnabled">Show Grid</label>
+      <input id="gridEnabled" type="checkbox" checked />
+      <label for="collisionEnabled">Collision</label>
+      <input id="collisionEnabled" type="checkbox" checked />
+      <label for="travelSpeed">Travel Speed</label>
+      <input id="travelSpeed" type="range" min="1" max="100" step="1" value="8" />
+      <label for="externalSize">External Size</label>
+      <input id="externalSize" type="range" min="0.5" max="2.5" step="0.01" value="1" />
+      <label for="internalSpeed">Internal Speed</label>
+      <input id="internalSpeed" type="range" min="0.2" max="2.5" step="0.05" value="0.8" />
+      <label for="internalSize">Internal Size</label>
+      <input id="internalSize" type="range" min="0.5" max="1.5" step="0.01" value="0.9" />
+      <label for="sphereGap">Sphere Gap</label>
+      <input id="sphereGap" type="range" min="0.08" max="0.6" step="0.005" value="0.19" />
+      <label for="cursorSize">Cursor Size</label>
+      <input id="cursorSize" type="range" min="0.5" max="10" step="0.1" value="4.0" />
+      <label for="cursorForce">Cursor Force</label>
+      <input id="cursorForce" type="range" min="0" max="12" step="0.05" value="2.4" />
+      <label for="cursorLinkDistance">Link Distance</label>
+      <input id="cursorLinkDistance" type="range" min="0.5" max="8" step="0.05" value="2.8" />
+      <label for="cursorLineColor">Cursor Line</label>
+      <input id="cursorLineColor" type="color" value="#cad9ff" />
+      <label for="gridColor">Grid Color</label>
+      <input id="gridColor" type="color" value="#d0d0d0" />
+      <label for="sphereColor">Color</label>
+      <input id="sphereColor" type="color" value="#90b2ff" />
+      <label for="internalColor">Internal Color</label>
+      <input id="internalColor" type="color" value="#4f6fb6" />
+      <label for="internalDetailShading">Internal Shading</label>
+      <input id="internalDetailShading" type="checkbox" checked />
+      <label for="sphereShadows">Sphere Shadows</label>
+      <input id="sphereShadows" type="checkbox" checked />
+      <label for="sphereOpacity">Opacity</label>
+      <input id="sphereOpacity" type="range" min="0.05" max="1" step="0.01" value="0.95" />
+      <label for="sphereGlare">Glare</label>
+      <input id="sphereGlare" type="range" min="0" max="1" step="0.01" value="0.45" />
+      <label for="sphereMatte">Matte</label>
+      <input id="sphereMatte" type="range" min="0" max="1" step="0.01" value="0.35" />
+      <label for="internalMatte">Internal Matte</label>
+      <input id="internalMatte" type="range" min="0" max="1" step="0.01" value="0.45" />
+      <label for="sphereGlow">Glow</label>
+      <input id="sphereGlow" type="range" min="0" max="2" step="0.01" value="0.35" />
+    </div>
+    <div id="statusLine" class="status"></div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js"
+      }
+    }
+  </script>
+  <script type="module" src="./src/main.js?v=20260225-121"></script>
+</body>
+</html>
