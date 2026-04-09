@@ -7,43 +7,17 @@ export const refs = {
   shapeSelect: el("shapeSelect"),
   imageInput: el("imageInput"),
   meshInput: el("meshInput"),
-  externalCountInput: el("externalCount"),
-  internalCountInput: el("internalCount"),
+  reflectionImageBtn: el("reflectionImageBtn"),
+  reflectionImageInput: el("reflectionImageInput"),
   shapeScaleInput: el("shapeScale"),
-  surfaceExternalOnlyInput: el("surfaceExternalOnly"),
-  faceMinTravelInput: el("faceMinTravel"),
-  movementModeInput: el("movementMode"),
-  internalMovementInput: el("internalMovement"),
-  gridEnabledInput: el("gridEnabled"),
   collisionEnabledInput: el("collisionEnabled"),
   travelSpeedInput: el("travelSpeed"),
-  turbulenceInput: el("turbulence"),
-  turbulenceRippleInput: el("turbulenceRipple"),
-  rippleCountInput: el("rippleCount"),
-  rippleSizeInput: el("rippleSize"),
-  tornadoBatchRingsInput: el("tornadoBatchRings"),
-  tornadoBatchOffsetInput: el("tornadoBatchOffset"),
-  tornadoSkewInput: el("tornadoSkew"),
-  tornadoImperfectionInput: el("tornadoImperfection"),
-  externalSizeInput: el("externalSize"),
-  internalSpeedInput: el("internalSpeed"),
-  internalSizeInput: el("internalSize"),
-  innerWarpInput: el("innerWarp"),
-  sphereGapInput: el("sphereGap"),
-  cursorSizeInput: el("cursorSize"),
-  cursorForceInput: el("cursorForce"),
-  cursorLinkDistanceInput: el("cursorLinkDistance"),
-  cursorLineColorInput: el("cursorLineColor"),
-  gridColorInput: el("gridColor"),
-  showParticlesInput: el("showParticles"),
   showImportedSurfaceInput: el("showImportedSurface"),
   sphereColorInput: el("sphereColor"),
   internalColorInput: el("internalColor"),
-  nucleusShapeInput: el("nucleusShape"),
-  nucleusPresetInput: el("nucleusPreset"),
-  nucleusSizeInput: el("nucleusSize"),
   nucleusCornerRadiusInput: el("nucleusCornerRadius"),
   nucleusYOffsetInput: el("nucleusYOffset"),
+  lightDistanceInput: el("lightDistance"),
   nucleusColorInput: el("nucleusColor"),
   nucleusOpacityInput: el("nucleusOpacity"),
   nucleusGlareInput: el("nucleusGlare"),
@@ -62,6 +36,8 @@ export const refs = {
   nucleusEnvIntensityInput: el("nucleusEnvIntensity"),
   nucleusReflectTintInput: el("nucleusReflectTint"),
   nucleusReflectTintMixInput: el("nucleusReflectTintMix"),
+  surfaceChromaInput: el("surfaceChroma"),
+  reflectionStrengthInput: el("reflectionStrength"),
   nucleusRimStrengthInput: el("nucleusRimStrength"),
   nucleusRimPowerInput: el("nucleusRimPower"),
   nucleusRimColorInput: el("nucleusRimColor"),
@@ -91,6 +67,7 @@ export const refs = {
   internalDetailShadingInput: el("internalDetailShading"),
   particleLightingInput: el("particleLighting"),
   sphereShadowsInput: el("sphereShadows"),
+  shadowContrastInput: el("shadowContrast"),
   sphereOpacityInput: el("sphereOpacity"),
   sphereGlareInput: el("sphereGlare"),
   sphereMatteInput: el("sphereMatte"),
@@ -98,6 +75,8 @@ export const refs = {
   sphereGlowInput: el("sphereGlow"),
   exportDataBtn: el("exportDataBtn"),
   exportWebflowBtn: el("exportWebflowBtn"),
+  saveStartupBtn: el("saveStartupBtn"),
+  clearStartupBtn: el("clearStartupBtn"),
   statusLine: el("statusLine")
 };
 
@@ -117,7 +96,7 @@ function matchesShapeScope(scope, shape) {
 }
 
 export function updateNucleusControlSections(shape) {
-  const currentShape = shape || refs.nucleusShapeInput?.value || "sphere";
+  const currentShape = shape || "sphere";
   const nodes = document.querySelectorAll("[data-shape-controls]");
   for (const node of nodes) {
     const visible = matchesShapeScope(node.dataset.shapeControls, currentShape);

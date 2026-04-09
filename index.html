@@ -28,115 +28,32 @@
       </select>
       <input id="imageInput" type="file" accept="image/*" />
       <input id="meshInput" type="file" accept=".glb,.gltf,.obj,model/gltf-binary,model/gltf+json" />
+      <button id="reflectionImageBtn" type="button">Reflection Image</button>
+      <input id="reflectionImageInput" type="file" accept=".exr,.hdr,image/*" style="display:none" />
       <button id="exportDataBtn" type="button">Export JSON</button>
       <button id="exportWebflowBtn" type="button">Export Webflow HTML</button>
+      <button id="saveStartupBtn" type="button">Save Startup</button>
+      <button id="clearStartupBtn" type="button">Clear Startup</button>
     </div>
     <div class="panel">
-      <div class="panel-sep">Shape</div>
-      <label for="externalCount">External Count</label>
-      <input id="externalCount" type="range" min="0" max="20000" step="100" value="0" />
-      <label for="internalCount">Internal Count</label>
-      <input id="internalCount" type="range" min="0" max="10000" step="50" value="0" />
-      <label for="shapeScale">Shape Scale</label>
-      <input id="shapeScale" type="range" min="0.4" max="2.5" step="0.01" value="1" />
-      <label for="surfaceExternalOnly">Face Only</label>
-      <input id="surfaceExternalOnly" type="checkbox" />
-      <label for="faceMinTravel">Min Face Travel</label>
-      <input id="faceMinTravel" type="range" min="6" max="120" step="1" value="18" />
-      <label for="movementMode">Move Mode</label>
-      <select id="movementMode">
-        <option value="normal">Normal</option>
-        <option value="face-one-way">Face One-Way</option>
-        <option value="radial-4">Radial 4-Way</option>
-        <option value="tornado">Tornado</option>
-        <option value="football-pattern">Football Pattern</option>
-        <option value="basketball-pattern">Basketball Pattern</option>
-        <option value="static-detail">Static Detail</option>
-      </select>
-      <label for="internalMovement">Inner Move</label>
-      <select id="internalMovement">
-        <option value="normal">Normal</option>
-        <option value="static">Static</option>
-        <option value="match">Match Outer</option>
-      </select>
-      <label for="gridEnabled">Show Grid</label>
-      <input id="gridEnabled" type="checkbox" checked />
-      <label for="collisionEnabled">Collision</label>
-      <input id="collisionEnabled" type="checkbox" checked />
+      <input id="shapeScale" type="hidden" value="1" />
+      <input id="collisionEnabled" type="hidden" value="true" />
       <div class="panel-sep">Motion</div>
       <label for="travelSpeed">Travel Speed</label>
       <input id="travelSpeed" type="range" min="1" max="100" step="1" value="8" />
-      <label for="turbulence">Turbulence</label>
-      <input id="turbulence" type="range" min="0" max="6" step="0.01" value="0" />
-      <label for="turbulenceRipple">Turb Ripple</label>
-      <input id="turbulenceRipple" type="range" min="0" max="6" step="0.01" value="0" />
-      <label for="rippleCount">Ripple Count</label>
-      <input id="rippleCount" type="range" min="0" max="14" step="1" value="4" />
-      <label for="rippleSize">Ripple Size</label>
-      <input id="rippleSize" type="range" min="0.2" max="2.5" step="0.01" value="1.0" />
-      <label for="tornadoBatchRings">Torn Batch</label>
-      <input id="tornadoBatchRings" type="range" min="1" max="12" step="1" value="3" />
-      <label for="tornadoBatchOffset">Torn Offset</label>
-      <input id="tornadoBatchOffset" type="range" min="-0.5" max="0.5" step="0.005" value="0.04" />
-      <label for="tornadoSkew">Torn Skew</label>
-      <input id="tornadoSkew" type="range" min="-1" max="1" step="0.01" value="0.0" />
-      <label for="tornadoImperfection">Torn Imperfect</label>
-      <input id="tornadoImperfection" type="range" min="0" max="2.5" step="0.01" value="1.0" />
-      <label for="externalSize">External Size</label>
-      <input id="externalSize" type="range" min="0.5" max="2.5" step="0.01" value="1" />
-      <label for="internalSpeed">Internal Speed</label>
-      <input id="internalSpeed" type="range" min="0.2" max="2.5" step="0.05" value="0.8" />
-      <label for="internalSize">Internal Size</label>
-      <input id="internalSize" type="range" min="0.5" max="1.5" step="0.01" value="0.9" />
-      <label for="innerWarp">Inner Warp</label>
-      <input id="innerWarp" type="range" min="0" max="2.5" step="0.01" value="0" />
-      <label for="sphereGap">Sphere Gap</label>
-      <input id="sphereGap" type="range" min="0.08" max="0.6" step="0.005" value="0.19" />
-      <div class="panel-sep">Cursor And Grid</div>
-      <label for="cursorSize">Cursor Size</label>
-      <input id="cursorSize" type="range" min="0.5" max="10" step="0.1" value="4.0" />
-      <label for="cursorForce">Cursor Force</label>
-      <input id="cursorForce" type="range" min="0" max="12" step="0.05" value="2.4" />
-      <label for="cursorLinkDistance">Link Distance</label>
-      <input id="cursorLinkDistance" type="range" min="0.5" max="8" step="0.05" value="2.8" />
-      <label for="cursorLineColor">Cursor Line</label>
-      <input id="cursorLineColor" type="color" value="#cad9ff" />
-      <label for="gridColor">Grid Color</label>
-      <input id="gridColor" type="color" value="#d0d0d0" />
-      <div class="panel-sep">Particles</div>
-      <label for="showParticles">Show Particles</label>
-      <input id="showParticles" type="checkbox" />
       <label for="showImportedSurface">Show Imported Surface</label>
       <input id="showImportedSurface" type="checkbox" checked />
-      <label for="sphereColor">Color</label>
-      <input id="sphereColor" type="color" value="#90b2ff" />
-      <label for="internalColor">Internal Color</label>
-      <input id="internalColor" type="color" value="#4f6fb6" />
+      <input id="sphereColor" type="hidden" value="#90b2ff" />
+      <input id="internalColor" type="hidden" value="#4f6fb6" />
       <div class="panel-sep">Nucleus Base</div>
-      <label for="nucleusShape">Nucleus Shape</label>
-      <select id="nucleusShape">
-        <option value="sphere">Sphere</option>
-        <option value="cube">Cube</option>
-        <option value="crystal-orb">Crystal Orb</option>
-        <option value="liquid-core">Liquid Core</option>
-      </select>
-      <label for="nucleusPreset">Nucleus Preset</label>
-      <select id="nucleusPreset">
-        <option value="custom">Custom</option>
-        <option value="chrome">Chrome</option>
-        <option value="plastic">Plastic</option>
-        <option value="glass">Glass</option>
-        <option value="frosted">Frosted</option>
-        <option value="holographic">Holographic</option>
-      </select>
-      <label for="nucleusSize">Nucleus Size</label>
-      <input id="nucleusSize" type="range" min="0.2" max="4" step="0.01" value="1.1" />
       <label for="nucleusCornerRadius" data-shape-controls="cube">Nucleus Corner Radius</label>
       <input id="nucleusCornerRadius" data-shape-controls="cube" type="range" min="0" max="0.8" step="0.005" value="0.12" />
       <label for="nucleusYOffset">Nucleus Y Offset</label>
       <input id="nucleusYOffset" type="range" min="-6" max="6" step="0.01" value="0" />
+      <label for="lightDistance">Light Distance</label>
+      <input id="lightDistance" type="range" min="0.4" max="6" step="0.01" value="1" />
       <label for="nucleusColor">Nucleus Color</label>
-      <input id="nucleusColor" type="color" value="#ffffff" />
+      <input id="nucleusColor" type="color" value="#a8d8ff" />
       <label for="nucleusOpacity">Nucleus Opacity</label>
       <input id="nucleusOpacity" type="range" min="0.05" max="1" step="0.01" value="0.95" />
       <label for="nucleusGlare">Nucleus Glare</label>
@@ -173,6 +90,10 @@
       <input id="nucleusReflectTint" type="color" value="#a8d8ff" />
       <label for="nucleusReflectTintMix">Nucleus Tint Mix</label>
       <input id="nucleusReflectTintMix" type="range" min="0" max="1" step="0.01" value="0.0" />
+      <label for="surfaceChroma">Surface Chroma</label>
+      <input id="surfaceChroma" type="range" min="0" max="1" step="0.01" value="0.0" />
+      <label for="reflectionStrength">Reflection Strength</label>
+      <input id="reflectionStrength" type="range" min="0" max="4" step="0.01" value="1.8" />
       <label for="nucleusRimStrength">Nucleus Rim Strength</label>
       <input id="nucleusRimStrength" type="range" min="0" max="2.5" step="0.01" value="0.35" />
       <label for="nucleusRimPower">Nucleus Rim Power</label>
@@ -183,50 +104,6 @@
       <input id="nucleusNoiseAmount" data-shape-controls="cube" type="range" min="0" max="2" step="0.01" value="0.2" />
       <label for="nucleusNoiseScale" data-shape-controls="cube">Nucleus Noise Scale</label>
       <input id="nucleusNoiseScale" data-shape-controls="cube" type="range" min="0.2" max="8" step="0.01" value="1.4" />
-      <div class="panel-sep">Nucleus Layers And Motion</div>
-      <label for="nucleusShellMode">Nested Layers</label>
-      <input id="nucleusShellMode" type="checkbox" />
-      <label for="nucleusShellColor">Layer Color</label>
-      <input id="nucleusShellColor" type="color" value="#9fc6ff" />
-      <label for="nucleusShellThickness">Layer Gap</label>
-      <input id="nucleusShellThickness" type="range" min="0.01" max="0.5" step="0.005" value="0.08" />
-      <label for="nucleusShellLayers">Inner Layers</label>
-      <input id="nucleusShellLayers" type="range" min="0" max="20" step="1" value="0" />
-      <label for="nucleusPulseAmount">Nucleus Pulse Amount</label>
-      <input id="nucleusPulseAmount" type="range" min="0" max="0.35" step="0.001" value="0.0" />
-      <label for="nucleusPulseSpeed">Nucleus Pulse Speed</label>
-      <input id="nucleusPulseSpeed" type="range" min="0" max="8" step="0.01" value="1.2" />
-      <label for="nucleusDistortionAmount">Nucleus Distort Amount</label>
-      <input id="nucleusDistortionAmount" type="range" min="0" max="0.35" step="0.001" value="0.0" />
-      <label for="nucleusDistortionSpeed">Nucleus Distort Speed</label>
-      <input id="nucleusDistortionSpeed" type="range" min="0" max="8" step="0.01" value="1.5" />
-      <div class="panel-sep" data-shape-controls="orb">Orb Flow</div>
-      <label for="nucleusBlobAmount" data-shape-controls="orb">Orb Flow Amount</label>
-      <input id="nucleusBlobAmount" data-shape-controls="orb" type="range" min="0" max="0.45" step="0.001" value="0.18" />
-      <label for="nucleusBlobScale" data-shape-controls="orb">Orb Flow Scale</label>
-      <input id="nucleusBlobScale" data-shape-controls="orb" type="range" min="0.4" max="4" step="0.01" value="1.7" />
-      <label for="nucleusBlobSpeed" data-shape-controls="orb">Orb Flow Speed</label>
-      <input id="nucleusBlobSpeed" data-shape-controls="orb" type="range" min="0" max="8" step="0.01" value="1.1" />
-      <label for="nucleusGradientTop" data-shape-controls="cube">Nucleus Grad Top</label>
-      <input id="nucleusGradientTop" data-shape-controls="cube" type="color" value="#ffffff" />
-      <label for="nucleusGradientBottom" data-shape-controls="cube">Nucleus Grad Bottom</label>
-      <input id="nucleusGradientBottom" data-shape-controls="cube" type="color" value="#7ea5ff" />
-      <label for="nucleusGradientMix" data-shape-controls="cube">Nucleus Grad Mix</label>
-      <input id="nucleusGradientMix" data-shape-controls="cube" type="range" min="0" max="1" step="0.01" value="0.15" />
-      <label for="nucleusSpinX">Nucleus Spin X</label>
-      <input id="nucleusSpinX" type="range" min="-2" max="2" step="0.01" value="0" />
-      <label for="nucleusSpinY">Nucleus Spin Y</label>
-      <input id="nucleusSpinY" type="range" min="-2" max="2" step="0.01" value="0.22" />
-      <label for="nucleusSpinZ">Nucleus Spin Z</label>
-      <input id="nucleusSpinZ" type="range" min="-2" max="2" step="0.01" value="0" />
-      <label for="nucleusBloomEnabled">Nucleus Bloom</label>
-      <input id="nucleusBloomEnabled" type="checkbox" />
-      <label for="nucleusBloomStrength">Nucleus Bloom Strength</label>
-      <input id="nucleusBloomStrength" type="range" min="0" max="3" step="0.01" value="0.7" />
-      <label for="nucleusBloomRadius">Nucleus Bloom Radius</label>
-      <input id="nucleusBloomRadius" type="range" min="0" max="1" step="0.01" value="0.35" />
-      <label for="nucleusBloomThreshold">Nucleus Bloom Threshold</label>
-      <input id="nucleusBloomThreshold" type="range" min="0" max="1" step="0.01" value="0.75" />
       <div class="panel-sep">Rendering</div>
       <label for="internalDetailShading">Internal Shading</label>
       <input id="internalDetailShading" type="checkbox" checked />
@@ -234,6 +111,8 @@
       <input id="particleLighting" type="checkbox" checked />
       <label for="sphereShadows">Sphere Shadows</label>
       <input id="sphereShadows" type="checkbox" checked />
+      <label for="shadowContrast">Shadow Contrast</label>
+      <input id="shadowContrast" type="range" min="0" max="2.5" step="0.01" value="1" />
       <label for="sphereOpacity">Opacity</label>
       <input id="sphereOpacity" type="range" min="0.05" max="1" step="0.01" value="0.95" />
       <label for="sphereGlare">Glare</label>
@@ -251,7 +130,8 @@
   <script type="importmap">
     {
       "imports": {
-        "three": "../node_modules/three/build/three.module.js"
+        "three": "https://unpkg.com/three@0.161.0/build/three.module.js",
+        "three/examples/jsm/": "https://unpkg.com/three@0.161.0/examples/jsm/"
       }
     }
   </script>

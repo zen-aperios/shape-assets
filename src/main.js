@@ -1,10 +1,13 @@
 import * as THREE from "three";
-import { OrbitControls } from "../../node_modules/three/examples/jsm/controls/OrbitControls.js";
-import { RoomEnvironment } from "../../node_modules/three/examples/jsm/environments/RoomEnvironment.js";
-import { RoundedBoxGeometry } from "../../node_modules/three/examples/jsm/geometries/RoundedBoxGeometry.js";
-import { EffectComposer } from "../../node_modules/three/examples/jsm/postprocessing/EffectComposer.js";
-import { RenderPass } from "../../node_modules/three/examples/jsm/postprocessing/RenderPass.js";
-import { UnrealBloomPass } from "../../node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { EXRLoader } from "three/examples/jsm/loaders/EXRLoader.js";
+import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
 import {
   buildPresetShapePoints,
   buildPointsFromImageUrl,
@@ -24,43 +27,17 @@ const {
   shapeSelect,
   imageInput,
   meshInput,
-  externalCountInput,
-  internalCountInput,
+  reflectionImageBtn,
+  reflectionImageInput,
   shapeScaleInput,
-  surfaceExternalOnlyInput,
-  faceMinTravelInput,
-  movementModeInput,
-  internalMovementInput,
-  gridEnabledInput,
   collisionEnabledInput,
   travelSpeedInput,
-  turbulenceInput,
-  turbulenceRippleInput,
-  rippleCountInput,
-  rippleSizeInput,
-  tornadoBatchRingsInput,
-  tornadoBatchOffsetInput,
-  tornadoSkewInput,
-  tornadoImperfectionInput,
-  externalSizeInput,
-  internalSpeedInput,
-  internalSizeInput,
-  innerWarpInput,
-  sphereGapInput,
-  cursorSizeInput,
-  cursorForceInput,
-  cursorLinkDistanceInput,
-  cursorLineColorInput,
-  gridColorInput,
-  showParticlesInput,
   showImportedSurfaceInput,
   sphereColorInput,
   internalColorInput,
-  nucleusShapeInput,
-  nucleusPresetInput,
-  nucleusSizeInput,
   nucleusCornerRadiusInput,
   nucleusYOffsetInput,
+  lightDistanceInput,
   nucleusColorInput,
   nucleusOpacityInput,
   nucleusGlareInput,
@@ -79,6 +56,8 @@ const {
   nucleusEnvIntensityInput,
   nucleusReflectTintInput,
   nucleusReflectTintMixInput,
+  surfaceChromaInput,
+  reflectionStrengthInput,
   nucleusRimStrengthInput,
   nucleusRimPowerInput,
   nucleusRimColorInput,
@@ -108,13 +87,16 @@ const {
   internalDetailShadingInput,
   particleLightingInput,
   sphereShadowsInput,
+  shadowContrastInput,
   sphereOpacityInput,
   sphereGlareInput,
   sphereMatteInput,
   internalMatteInput,
   sphereGlowInput,
   exportDataBtn,
-  exportWebflowBtn
+  exportWebflowBtn,
+  saveStartupBtn,
+  clearStartupBtn
 } = refs;
 
 function createNucleusGeometry(shape, cornerRadius) {
@@ -124,31 +106,248 @@ function createNucleusGeometry(shape, cornerRadius) {
   return new THREE.IcosahedronGeometry(1, 6);
 }
 
+const STARTUP_CONFIG_KEY = "shape-create.startup-config.v1";
+const DEFAULT_STARTUP_MESH_URL = new URL("../flower.glb", import.meta.url).href;
+const DEFAULT_STARTUP_MESH_FILENAME = "flower.glb";
+const DEFAULT_STARTUP_SNAPSHOT = {
+  shape: {
+    name: "custom-mesh",
+    scale: 1,
+    movementMode: "normal"
+  },
+  render: {
+    externalColor: "#90b2ff",
+    internalColor: "#4f6fb6",
+    nucleusPreset: "custom",
+    nucleusShape: "sphere",
+    nucleusCornerRadius: 0.12,
+    nucleusSize: 1.1,
+    nucleusYOffset: -4.24,
+    lightDistance: 6,
+    nucleusColor: "#979c98",
+    nucleusOpacity: 1,
+    nucleusTransmission: 1,
+    nucleusThickness: 0,
+    nucleusAttenuationColor: "#000000",
+    nucleusAttenuationDistance: 19.2,
+    nucleusSpecular: 1,
+    nucleusSpecularColor: "#00f6ff",
+    nucleusClearcoat: 0.86,
+    nucleusClearcoatRoughness: 1,
+    nucleusIridescence: 1,
+    nucleusIor: 2.333,
+    nucleusEnvIntensity: 3.2,
+    nucleusReflectTint: "#000000",
+    nucleusReflectTintMix: 0.1,
+    surfaceChroma: 1,
+    reflectionStrength: 4,
+    nucleusRimStrength: 2.5,
+    nucleusRimPower: 8,
+    nucleusRimColor: "#000000",
+    nucleusNoiseAmount: 0.2,
+    nucleusNoiseScale: 1.4,
+    nucleusShellMode: false,
+    nucleusShellColor: "#9fc6ff",
+    nucleusShellThickness: 0.08,
+    nucleusShellLayers: 0,
+    nucleusPulseAmount: 0,
+    nucleusPulseSpeed: 1.2,
+    nucleusDistortionAmount: 0,
+    nucleusDistortionSpeed: 1.5,
+    nucleusBlobAmount: 0.18,
+    nucleusBlobScale: 1.7,
+    nucleusBlobSpeed: 1.1,
+    nucleusGradientTop: "#ffffff",
+    nucleusGradientBottom: "#7ea5ff",
+    nucleusGradientMix: 0.15,
+    nucleusSpinX: 0,
+    nucleusSpinY: 0.22,
+    nucleusSpinZ: 0,
+    nucleusBloomEnabled: false,
+    nucleusBloomStrength: 0.7,
+    nucleusBloomRadius: 0.35,
+    nucleusBloomThreshold: 0.75,
+    shadowContrast: 1.71,
+    opacity: 0.95
+  }
+};
+
+function applySnapshotDefaultsToInputs(snapshot) {
+  if (!snapshot) return;
+  const { shape = {}, render = {} } = snapshot;
+  const map = {
+    shapeSelect: shape.name,
+    shapeScale: shape.scale,
+    movementMode: shape.movementMode,
+    sphereColor: render.externalColor,
+    internalColor: render.internalColor,
+    nucleusPreset: render.nucleusPreset,
+    nucleusShape: render.nucleusShape,
+    nucleusCornerRadius: render.nucleusCornerRadius,
+    nucleusSize: render.nucleusSize,
+    nucleusYOffset: render.nucleusYOffset,
+    lightDistance: render.lightDistance,
+    nucleusColor: render.nucleusColor,
+    nucleusOpacity: render.nucleusOpacity,
+    nucleusTransmission: render.nucleusTransmission,
+    nucleusThickness: render.nucleusThickness,
+    nucleusAttenuationColor: render.nucleusAttenuationColor,
+    nucleusAttenuationDistance: render.nucleusAttenuationDistance,
+    nucleusSpecular: render.nucleusSpecular,
+    nucleusSpecularColor: render.nucleusSpecularColor,
+    nucleusClearcoat: render.nucleusClearcoat,
+    nucleusClearcoatRoughness: render.nucleusClearcoatRoughness,
+    nucleusIridescence: render.nucleusIridescence,
+    nucleusIor: render.nucleusIor,
+    nucleusEnvIntensity: render.nucleusEnvIntensity,
+    nucleusReflectTint: render.nucleusReflectTint,
+    nucleusReflectTintMix: render.nucleusReflectTintMix,
+    surfaceChroma: render.surfaceChroma,
+    reflectionStrength: render.reflectionStrength,
+    nucleusRimStrength: render.nucleusRimStrength,
+    nucleusRimPower: render.nucleusRimPower,
+    nucleusRimColor: render.nucleusRimColor,
+    nucleusNoiseAmount: render.nucleusNoiseAmount,
+    nucleusNoiseScale: render.nucleusNoiseScale,
+    nucleusShellMode: render.nucleusShellMode,
+    nucleusShellColor: render.nucleusShellColor,
+    nucleusShellThickness: render.nucleusShellThickness,
+    nucleusShellLayers: render.nucleusShellLayers,
+    nucleusPulseAmount: render.nucleusPulseAmount,
+    nucleusPulseSpeed: render.nucleusPulseSpeed,
+    nucleusDistortionAmount: render.nucleusDistortionAmount,
+    nucleusDistortionSpeed: render.nucleusDistortionSpeed,
+    nucleusBlobAmount: render.nucleusBlobAmount,
+    nucleusBlobScale: render.nucleusBlobScale,
+    nucleusBlobSpeed: render.nucleusBlobSpeed,
+    nucleusGradientTop: render.nucleusGradientTop,
+    nucleusGradientBottom: render.nucleusGradientBottom,
+    nucleusGradientMix: render.nucleusGradientMix,
+    nucleusSpinX: render.nucleusSpinX,
+    nucleusSpinY: render.nucleusSpinY,
+    nucleusSpinZ: render.nucleusSpinZ,
+    nucleusBloomEnabled: render.nucleusBloomEnabled,
+    nucleusBloomStrength: render.nucleusBloomStrength,
+    nucleusBloomRadius: render.nucleusBloomRadius,
+    nucleusBloomThreshold: render.nucleusBloomThreshold,
+    shadowContrast: render.shadowContrast,
+    sphereOpacity: render.opacity
+  };
+  for (const [id, value] of Object.entries(map)) {
+    if (value === undefined || value === null) continue;
+    const el = document.getElementById(id);
+    if (!el) continue;
+    if (el.type === "checkbox") el.checked = !!value;
+    else if (el.type !== "file") el.value = String(value);
+  }
+}
+
+function getPersistableControls() {
+  return Array.from(document.querySelectorAll("input[id], select[id]")).filter((el) => {
+    if (!el?.id) return false;
+    if (el.type === "file") return false;
+    if (el.id === "imageInput" || el.id === "meshInput") return false;
+    return true;
+  });
+}
+
+function buildStartupConfig() {
+  const inputs = {};
+  const controlElements = getPersistableControls();
+  for (let i = 0; i < controlElements.length; i++) {
+    const el = controlElements[i];
+    inputs[el.id] = el.type === "checkbox" ? !!el.checked : String(el.value ?? "");
+  }
+  const scene = {
+    cameraPosition: [camera.position.x, camera.position.y, camera.position.z],
+    controlsTarget: [controls.target.x, controls.target.y, controls.target.z],
+    cameraZoom: camera.zoom,
+    groupRotation: [group.rotation.x, group.rotation.y, group.rotation.z]
+  };
+  return {
+    version: 1,
+    savedAt: new Date().toISOString(),
+    inputs,
+    scene
+  };
+}
+
+let loadedStartupSceneState = null;
+
+function applyStartupConfigToInputs(config) {
+  const inputs = config?.inputs;
+  if (!inputs || typeof inputs !== "object") return false;
+  for (const [id, value] of Object.entries(inputs)) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    if (el.type === "checkbox") el.checked = !!value;
+    else if (el.type !== "file") el.value = String(value ?? "");
+  }
+  loadedStartupSceneState = config?.scene && typeof config.scene === "object"
+    ? config.scene
+    : null;
+  return true;
+}
+
+function loadStartupConfigIntoInputs() {
+  try {
+    const raw = localStorage.getItem(STARTUP_CONFIG_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    return applyStartupConfigToInputs(parsed);
+  } catch {
+    return false;
+  }
+}
+
+const loadedUserStartup = loadStartupConfigIntoInputs();
+if (!loadedUserStartup) applySnapshotDefaultsToInputs(DEFAULT_STARTUP_SNAPSHOT);
+
+const FIXED_EXTERNAL_SIZE = 1;
+const FIXED_INTERNAL_SIZE = 0.9;
+const FIXED_INTERNAL_SPEED = 0.8;
+const FIXED_SPHERE_GAP = 0.19;
+const FIXED_TORNADO_BATCH_RINGS = 3;
+const FIXED_TORNADO_BATCH_OFFSET = 0.04;
+const FIXED_TORNADO_SKEW = 0;
+const FIXED_TORNADO_IMPERFECTION = 1;
+const FIXED_MOVEMENT_MODE = "normal";
+const FIXED_INTERNAL_MOVEMENT_MODE = "normal";
+const FIXED_SURFACE_EXTERNAL_ONLY = false;
+const FIXED_FACE_MIN_TRAVEL = 18;
+const FIXED_NUCLEUS_SHAPE = "sphere";
+const FIXED_NUCLEUS_PRESET = "custom";
+const FIXED_NUCLEUS_SIZE = 1.1;
+
 function clearImportedSurface() {
   for (let i = importSurfaceGroup.children.length - 1; i >= 0; i--) {
     const child = importSurfaceGroup.children[i];
+    if (child.material) {
+      if (Array.isArray(child.material)) {
+        child.material.forEach((m) => {
+          if (m && m !== importedSurfaceMaterial) m.dispose?.();
+        });
+      } else if (child.material !== importedSurfaceMaterial) {
+        child.material.dispose?.();
+      }
+    }
     child.geometry?.dispose?.();
     importSurfaceGroup.remove(child);
   }
 }
 
 function syncImportedSurfaceMaterials() {
-  const baseMaterial = nucleusMaterial;
-  const applySourceMaterial = (mesh, source, forceDoubleSide = false) => {
-    const current = mesh.material;
-    const sameType = current && current.constructor === source.constructor;
-    if (!sameType) {
-      current?.dispose?.();
-      mesh.material = source.clone();
-    } else {
-      mesh.material.copy(source);
-    }
-    if (forceDoubleSide) mesh.material.side = THREE.DoubleSide;
-    mesh.material.needsUpdate = true;
-  };
   importSurfaceGroup.traverse((child) => {
     if (!child.isMesh) return;
-    applySourceMaterial(child, baseMaterial, true);
+    if (Array.isArray(child.material)) {
+      child.material.forEach((m) => {
+        if (m && m !== importedSurfaceMaterial) m.dispose?.();
+      });
+      child.material = importedSurfaceMaterial;
+      return;
+    }
+    if (child.material !== importedSurfaceMaterial) child.material?.dispose?.();
+    child.material = importedSurfaceMaterial;
   });
 }
 
@@ -156,6 +355,31 @@ function syncImportedSurfaceVisibility() {
   importSurfaceGroup.visible =
     importedSurfaceVisible &&
     importSurfaceGroup.children.length > 0;
+}
+
+function ensureGeometryUvForThicknessMap(geometry) {
+  if (!geometry || geometry.getAttribute("uv")) return;
+  const pos = geometry.getAttribute("position");
+  if (!pos || !pos.count) return;
+  geometry.computeBoundingBox();
+  const box = geometry.boundingBox;
+  const size = new THREE.Vector3();
+  box.getSize(size);
+  const useXZ = size.x >= size.y;
+  const min = box.min;
+  const sx = Math.max(0.0001, useXZ ? size.x : size.y);
+  const sy = Math.max(0.0001, size.z);
+  const uv = new Float32Array(pos.count * 2);
+  for (let i = 0; i < pos.count; i++) {
+    const px = pos.getX(i);
+    const py = pos.getY(i);
+    const pz = pos.getZ(i);
+    const u = ((useXZ ? px : py) - (useXZ ? min.x : min.y)) / sx;
+    const v = (pz - min.z) / sy;
+    uv[i * 2] = u;
+    uv[i * 2 + 1] = v;
+  }
+  geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
 }
 
 function buildImportedSurface(root) {
@@ -166,23 +390,43 @@ function buildImportedSurface(root) {
   }
 
   root.updateWorldMatrix(true, true);
-  const meshPos = new THREE.Vector3();
-  const meshQuat = new THREE.Quaternion();
-  const meshScale = new THREE.Vector3();
+  const sourceGeometries = [];
   root.traverse((child) => {
     if (!child.isMesh || !child.geometry) return;
-    child.matrixWorld.decompose(meshPos, meshQuat, meshScale);
-    const baseMesh = new THREE.Mesh(markLiquidGeometry(child.geometry.clone()), nucleusMaterial.clone());
-    baseMesh.material.side = THREE.DoubleSide;
-    baseMesh.position.copy(meshPos);
-    baseMesh.quaternion.copy(meshQuat);
-    baseMesh.scale.copy(meshScale);
-    baseMesh.castShadow = false;
-    baseMesh.receiveShadow = false;
-    baseMesh.userData.surfaceRole = "base";
-    importSurfaceGroup.add(baseMesh);
-
+    const clonedGeometry = child.geometry.clone();
+    clonedGeometry.applyMatrix4(child.matrixWorld);
+    if (!clonedGeometry.getAttribute("normal")) clonedGeometry.computeVertexNormals();
+    else clonedGeometry.normalizeNormals();
+    sourceGeometries.push(clonedGeometry);
   });
+
+  if (!sourceGeometries.length) {
+    syncImportedSurfaceVisibility();
+    return;
+  }
+
+  let mergedGeometry = null;
+  try {
+    mergedGeometry = BufferGeometryUtils.mergeGeometries(sourceGeometries, false);
+  } catch {
+    mergedGeometry = null;
+  }
+  if (!mergedGeometry) {
+    mergedGeometry = sourceGeometries[0];
+  } else {
+    for (let i = 0; i < sourceGeometries.length; i++) sourceGeometries[i].dispose?.();
+  }
+  ensureGeometryUvForThicknessMap(mergedGeometry);
+
+  const baseMesh = new THREE.Mesh(markLiquidGeometry(mergedGeometry), importedSurfaceMaterial);
+  baseMesh.position.set(0, 0, 0);
+  baseMesh.quaternion.identity();
+  baseMesh.scale.set(1, 1, 1);
+  baseMesh.castShadow = true;
+  baseMesh.receiveShadow = true;
+  baseMesh.renderOrder = 40;
+  baseMesh.userData.surfaceRole = "base";
+  importSurfaceGroup.add(baseMesh);
 
   syncImportedSurfaceMaterials();
   syncImportedSurfaceVisibility();
@@ -262,18 +506,62 @@ function makeNoiseTexture(size = 256) {
   return tex;
 }
 
+function makeThicknessTexture(size = 512) {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  const img = ctx.createImageData(size, size);
+  const cx = size * 0.5;
+  const cy = size * 0.5;
+  const maxR = Math.sqrt(cx * cx + cy * cy);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4;
+      const dx = x - cx;
+      const dy = y - cy;
+      const r = Math.sqrt(dx * dx + dy * dy) / maxR;
+      const radialCore = 1 - Math.min(1, r);
+      const layerA = Math.sin((x / size) * Math.PI * 6.3) * 0.5 + 0.5;
+      const layerB = Math.cos((y / size) * Math.PI * 4.7) * 0.5 + 0.5;
+      const layerC = Math.sin(((x + y) / size) * Math.PI * 8.1) * 0.5 + 0.5;
+      const grain = (Math.random() * 2 - 1) * 0.1;
+      const v = THREE.MathUtils.clamp(
+        0.1 + radialCore * 0.84 + layerA * 0.14 + layerB * 0.11 + layerC * 0.08 + grain,
+        0.02,
+        1
+      );
+      const c = Math.round(v * 255);
+      img.data[i] = c;
+      img.data[i + 1] = c;
+      img.data[i + 2] = c;
+      img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.NoColorSpace;
+  tex.needsUpdate = true;
+  return tex;
+}
+
 const scene = new THREE.Scene();
 scene.background = null;
 scene.fog = new THREE.Fog(0xd6d6d6, 16, 44);
 
-const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.01, 160);
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.001, 220);
 camera.position.set(0, 0, 18);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.shadowMap.enabled = false;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.04;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setClearColor(0x000000, 0);
 container.appendChild(renderer.domElement);
 const composer = new EffectComposer(renderer);
@@ -290,6 +578,7 @@ composer.setSize(window.innerWidth, window.innerHeight);
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
 const chromeEnvRT = pmremGenerator.fromScene(new RoomEnvironment(), 0.04);
 const chromeEnvMap = chromeEnvRT.texture;
+scene.environment = chromeEnvMap;
 const nucleusDynamicEnvRT = new THREE.WebGLCubeRenderTarget(256, {
   type: THREE.HalfFloatType,
   generateMipmaps: true,
@@ -298,6 +587,21 @@ const nucleusDynamicEnvRT = new THREE.WebGLCubeRenderTarget(256, {
 });
 const nucleusCubeCamera = new THREE.CubeCamera(0.1, 180, nucleusDynamicEnvRT);
 scene.add(nucleusCubeCamera);
+const importedDynamicEnvRT = new THREE.WebGLCubeRenderTarget(256, {
+  type: THREE.HalfFloatType,
+  generateMipmaps: true,
+  minFilter: THREE.LinearMipmapLinearFilter,
+  colorSpace: THREE.SRGBColorSpace
+});
+const importedCubeCamera = new THREE.CubeCamera(0.1, 180, importedDynamicEnvRT);
+scene.add(importedCubeCamera);
+let importedEnvFrame = 0;
+const importedEnvBox = new THREE.Box3();
+const importedEnvCenter = new THREE.Vector3();
+let customReflectionEnvMap = null;
+let customReflectionTexture = null;
+let customReflectionEnvRT = null;
+const DEFAULT_REFLECTION_IMAGE_URL = new URL("../citrus_orchard_road_puresky_1k.exr", import.meta.url).href;
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -306,55 +610,159 @@ controls.minDistance = 1.2;
 controls.maxDistance = 35;
 controls.target.set(0, 0, 0);
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.28));
-const topLight = new THREE.DirectionalLight(0xffffff, 2.45);
-topLight.position.set(0, 16, 0);
+const topLight = new THREE.SpotLight(0xffffff, 4.1, 0, Math.PI * 0.24, 0.42, 1.35);
+topLight.position.set(4.2, 17.5, 8.3);
 topLight.target.position.set(0, 0, 0);
+topLight.castShadow = true;
+topLight.shadow.mapSize.set(2048, 2048);
+topLight.shadow.bias = -0.00008;
+topLight.shadow.normalBias = 0.016;
+topLight.shadow.radius = 5;
+topLight.shadow.camera.near = 0.5;
+topLight.shadow.camera.far = 80;
 scene.add(topLight);
 scene.add(topLight.target);
-const keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
-keyLight.position.set(7, 9, 6);
-scene.add(keyLight);
-const rimLight = new THREE.PointLight(0x5b84ff, 1.4, 50, 2);
-rimLight.position.set(-8, -4, 8);
+const fillLight = new THREE.HemisphereLight(0xe8f3ff, 0x2a3546, 0.52);
+scene.add(fillLight);
+const rimLight = new THREE.PointLight(0xaec6ff, 0.42, 36, 2);
+rimLight.position.set(-4.5, 7.8, -8.4);
 scene.add(rimLight);
-const sweepLightA = new THREE.DirectionalLight(0xfff3e0, 0.35);
-sweepLightA.position.set(12, 4, 4);
-scene.add(sweepLightA);
-const sweepLightB = new THREE.DirectionalLight(0x7da7ff, 0.25);
-sweepLightB.position.set(-10, -3, -6);
-scene.add(sweepLightB);
+const reflectionSceneryGroup = new THREE.Group();
+scene.add(reflectionSceneryGroup);
+{
+  const domeGeo = new THREE.SphereGeometry(90, 64, 48);
+  const domeMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uTop: { value: new THREE.Color("#88b7ff") },
+      uMid: { value: new THREE.Color("#d8ecff") },
+      uBottom: { value: new THREE.Color("#17302a") },
+      uTime: { value: 0 }
+    },
+    vertexShader: `
+varying vec3 vWPos;
+void main() {
+  vec4 wp = modelMatrix * vec4(position, 1.0);
+  vWPos = wp.xyz;
+  gl_Position = projectionMatrix * viewMatrix * wp;
+}`,
+    fragmentShader: `
+uniform vec3 uTop;
+uniform vec3 uMid;
+uniform vec3 uBottom;
+uniform float uTime;
+varying vec3 vWPos;
+void main() {
+  vec3 d = normalize(vWPos);
+  float h = clamp(d.y * 0.5 + 0.5, 0.0, 1.0);
+  vec3 sky = mix(uBottom, uMid, smoothstep(0.0, 0.45, h));
+  sky = mix(sky, uTop, smoothstep(0.45, 1.0, h));
+  float bands = sin((d.x + d.z) * 18.0 + uTime * 0.08) * 0.5 + 0.5;
+  float cloud = smoothstep(0.65, 0.95, bands) * smoothstep(0.2, 0.9, h) * 0.12;
+  gl_FragColor = vec4(sky + cloud, 1.0);
+}`,
+    side: THREE.BackSide,
+    depthWrite: false
+  });
+  const domeMesh = new THREE.Mesh(domeGeo, domeMat);
+  domeMesh.frustumCulled = false;
+  reflectionSceneryGroup.add(domeMesh);
+  reflectionSceneryGroup.userData.domeMaterial = domeMat;
+
+  const ground = new THREE.Mesh(
+    new THREE.CircleGeometry(35, 72),
+    new THREE.MeshStandardMaterial({
+      color: "#2a473a",
+      roughness: 0.96,
+      metalness: 0.0
+    })
+  );
+  ground.rotation.x = -Math.PI * 0.5;
+  ground.position.y = -10;
+  reflectionSceneryGroup.add(ground);
+
+  const cardColors = ["#8dc5ff", "#ffd59e", "#96f2c8", "#b9a8ff", "#7ab6ff", "#ffefb0"];
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const card = new THREE.Mesh(
+      new THREE.PlaneGeometry(14 + (i % 2) * 6, 8 + (i % 3) * 2),
+      new THREE.MeshBasicMaterial({
+        color: cardColors[i],
+        transparent: true,
+        opacity: 0.22 + (i % 3) * 0.08,
+        side: THREE.DoubleSide
+      })
+    );
+    card.position.set(Math.cos(a) * 24, -1 + (i % 3) * 2.2, Math.sin(a) * 24);
+    card.lookAt(0, 0, 0);
+    reflectionSceneryGroup.add(card);
+  }
+}
+// Keep dome/scenery hidden from direct view; used only for reflection capture.
+reflectionSceneryGroup.visible = false;
 
 const group = new THREE.Group();
 group.position.set(0, 0, 0);
 scene.add(group);
-const importCageGroup = new THREE.Group();
-group.add(importCageGroup);
+function makeRotationTestLabel(text) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.font = "900 180px Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(0,0,0,0.92)";
+  ctx.fillText(text, canvas.width * 0.5, canvas.height * 0.5);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
+    transparent: false,
+    alphaTest: 0.08,
+    depthWrite: true,
+    depthTest: true,
+    side: THREE.DoubleSide,
+    toneMapped: false
+  });
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(18, 4.8), material);
+  plane.position.set(0, 0, -13);
+  plane.rotation.set(0, 0, 0);
+  plane.renderOrder = -200;
+  return plane;
+}
+const rotationTestLabel = makeRotationTestLabel("ROTATION TEST");
+if (rotationTestLabel) scene.add(rotationTestLabel);
 const importSurfaceGroup = new THREE.Group();
 group.add(importSurfaceGroup);
-const maxCursorLinks = 3;
-const cursorLinkPositions = new Float32Array(maxCursorLinks * 2 * 3);
-const cursorLinkGeometry = new THREE.BufferGeometry();
-cursorLinkGeometry.setAttribute("position", new THREE.BufferAttribute(cursorLinkPositions, 3));
-cursorLinkGeometry.setDrawRange(0, 0);
-const cursorLinkMaterial = new THREE.LineBasicMaterial({
-  color: cursorLineColorInput?.value || "#cad9ff",
-  transparent: true,
-  opacity: 0.82
-});
-const cursorLinkLines = new THREE.LineSegments(cursorLinkGeometry, cursorLinkMaterial);
-group.add(cursorLinkLines);
+const contactShadowPlane = new THREE.Mesh(
+  new THREE.PlaneGeometry(1, 1),
+  new THREE.ShadowMaterial({ opacity: 0 })
+);
+contactShadowPlane.rotation.x = -Math.PI * 0.5;
+contactShadowPlane.position.set(0, -6.5, 0);
+contactShadowPlane.receiveShadow = false;
+contactShadowPlane.visible = false;
+contactShadowPlane.material.depthWrite = false;
+contactShadowPlane.frustumCulled = false;
+// Keep disabled: user requested no floor shadow and this can cause depth slicing artifacts.
+// scene.add(contactShadowPlane);
+const contactShadowBounds = new THREE.Box3();
+const contactShadowCenter = new THREE.Vector3();
+const contactShadowSize = new THREE.Vector3();
+let contactShadowFrame = 0;
 
-const initialExternalCount = Number(externalCountInput?.value);
-const initialInternalCount = Number(internalCountInput?.value);
-let externalCount = Number.isFinite(initialExternalCount) ? Math.max(0, initialExternalCount) : 0;
-let internalCount = Number.isFinite(initialInternalCount) ? Math.max(0, initialInternalCount) : 0;
+let externalCount = 0;
+let internalCount = 0;
 let sphereCount = Math.max(0, externalCount + internalCount);
 const baseShapeRadius = 5.7;
 let shapeScale = Number(shapeScaleInput?.value) || 1;
-let surfaceExternalOnly = surfaceExternalOnlyInput?.checked ?? false;
-let particlesVisible = showParticlesInput?.checked ?? false;
-let importedSurfaceVisible = showImportedSurfaceInput?.checked ?? true;
+let surfaceExternalOnly = FIXED_SURFACE_EXTERNAL_ONLY;
+let particlesVisible = false;
+let importedSurfaceVisible = true;
+if (showImportedSurfaceInput) showImportedSurfaceInput.checked = true;
 
 const particleGeometry = new THREE.SphereGeometry(0.1, 20, 16);
 const externalParticleMaterial = new THREE.MeshStandardMaterial({
@@ -386,7 +794,7 @@ const internalParticleBasicMaterial = new THREE.MeshBasicMaterial({
   opacity: 0.95
 });
 const nucleusMaterial = new THREE.MeshPhysicalMaterial({
-  color: 0xffffff,
+  color: 0xa8d8ff,
   roughness: 0.08,
   metalness: 0.92,
   clearcoat: 1.0,
@@ -402,7 +810,7 @@ const nucleusMaterial = new THREE.MeshPhysicalMaterial({
   opacity: 0.95
 });
 const nucleusBasicMaterial = new THREE.MeshBasicMaterial({
-  color: 0xffffff,
+  color: 0xa8d8ff,
   transparent: true,
   opacity: 0.95
 });
@@ -414,6 +822,31 @@ const nucleusShellMaterial = new THREE.MeshPhysicalMaterial({
   thickness: 0.2,
   transparent: true,
   opacity: 0.32
+});
+const importedThicknessTexture = makeThicknessTexture(512);
+const importedSurfaceMaterial = new THREE.MeshPhysicalMaterial({
+  color: 0xa8d8ff,
+  roughness: 0.03,
+  metalness: 0.0,
+  clearcoat: 0.5,
+  clearcoatRoughness: 0.3,
+  transmission: 0.95,
+  thickness: 3.0,
+  attenuationColor: new THREE.Color(0xa8d8ff),
+  attenuationDistance: 10.0,
+  ior: 1.65,
+  iridescence: 0.0,
+  specularIntensity: 1.3,
+  specularColor: new THREE.Color(0xffffff),
+  emissive: 0x000000,
+  emissiveIntensity: 0,
+  transparent: true,
+  opacity: 1.0,
+  side: THREE.DoubleSide,
+  depthWrite: true,
+  depthTest: true,
+  alphaHash: false,
+  thicknessMap: importedThicknessTexture
 });
 const nucleusRimMaterial = new THREE.ShaderMaterial({
   uniforms: {
@@ -494,10 +927,24 @@ const nucleusShadowUniforms = {
   uSharedShadowStrength: { value: 0.5 },
   uSharedShadowSoftness: { value: 0.2 }
 };
+const importedShadowUniforms = {
+  uSharedLightDir: sharedShadowLightDir,
+  uSharedCenter: sharedShadowCenter,
+  uSharedShadowStrength: { value: 0.22 },
+  uSharedShadowSoftness: { value: 0.3 }
+};
 nucleusMaterial.envMap = chromeEnvMap;
 nucleusMaterial.envMapIntensity = 3.0;
 nucleusShellMaterial.envMap = chromeEnvMap;
 nucleusShellMaterial.envMapIntensity = 2.4;
+importedSurfaceMaterial.envMap = chromeEnvMap;
+importedSurfaceMaterial.envMapIntensity = 2.8;
+
+// Initialize imported surface color from nucleus color input
+if (nucleusColorInput?.value) {
+  importedSurfaceMaterial.color.setStyle(nucleusColorInput.value);
+  importedSurfaceMaterial.attenuationColor.setStyle(nucleusColorInput.value);
+}
 
 function enableSharedShadow(material, shadowUniforms) {
   material.onBeforeCompile = (shader) => {
@@ -549,16 +996,18 @@ gl_FragColor.rgb *= sharedShade;
 enableSharedShadow(externalParticleMaterial, externalShadowUniforms);
 enableSharedShadow(internalParticleMaterial, internalShadowUniforms);
 enableSharedShadow(nucleusMaterial, nucleusShadowUniforms);
+enableSharedShadow(importedSurfaceMaterial, importedShadowUniforms);
 
 const materialControls = {
   color: "#90b2ff",
   internalColor: "#4f6fb6",
-  nucleusShape: nucleusShapeInput?.value || "sphere",
-  nucleusPreset: nucleusPresetInput?.value || "custom",
-  nucleusSize: Number(nucleusSizeInput?.value ?? 1.1),
+  nucleusShape: FIXED_NUCLEUS_SHAPE,
+  nucleusPreset: FIXED_NUCLEUS_PRESET,
+  nucleusSize: FIXED_NUCLEUS_SIZE,
   nucleusCornerRadius: Number(nucleusCornerRadiusInput?.value ?? 0.12),
   nucleusYOffset: Number(nucleusYOffsetInput?.value ?? 0),
-  nucleusColor: nucleusColorInput?.value || "#ffffff",
+  lightDistance: Number(lightDistanceInput?.value ?? 1),
+  nucleusColor: nucleusColorInput?.value || "#a8d8ff",
   nucleusOpacity: Number(nucleusOpacityInput?.value ?? 0.95),
   nucleusGlare: Number(nucleusGlareInput?.value ?? 0.5),
   nucleusMatte: Number(nucleusMatteInput?.value ?? 0.35),
@@ -576,6 +1025,8 @@ const materialControls = {
   nucleusEnvIntensity: Number(nucleusEnvIntensityInput?.value ?? 3.2),
   nucleusReflectTint: nucleusReflectTintInput?.value || "#a8d8ff",
   nucleusReflectTintMix: Number(nucleusReflectTintMixInput?.value ?? 0),
+  surfaceChroma: Number(surfaceChromaInput?.value ?? 0),
+  reflectionStrength: Number(reflectionStrengthInput?.value ?? 1.8),
   nucleusRimStrength: Number(nucleusRimStrengthInput?.value ?? 0.35),
   nucleusRimPower: Number(nucleusRimPowerInput?.value ?? 2.6),
   nucleusRimColor: nucleusRimColorInput?.value || "#cfe3ff",
@@ -602,6 +1053,7 @@ const materialControls = {
   nucleusBloomStrength: Number(nucleusBloomStrengthInput?.value ?? 0.7),
   nucleusBloomRadius: Number(nucleusBloomRadiusInput?.value ?? 0.35),
   nucleusBloomThreshold: Number(nucleusBloomThresholdInput?.value ?? 0.75),
+  shadowContrast: Number(shadowContrastInput?.value ?? 1),
   opacity: 0.95,
   glare: 0.45,
   matte: 0.35,
@@ -706,7 +1158,7 @@ function syncNucleusMesh() {
     }
     const nucleusGeometry = markLiquidGeometry(createNucleusGeometry(desiredShape, cornerRadius));
     nucleusMesh = new THREE.Mesh(nucleusGeometry, getNucleusRenderMaterial());
-    nucleusMesh.castShadow = false;
+    nucleusMesh.castShadow = true;
     nucleusMesh.receiveShadow = false;
     nucleusMesh.userData.shape = desiredShape;
     nucleusMesh.userData.cornerRadius = cornerRadius;
@@ -736,6 +1188,7 @@ function syncNucleusMesh() {
   nucleusMesh.visible = nucleusVisibleOnStartup;
   nucleusMesh.renderOrder = 20;
   nucleusMesh.position.set(0, materialControls.nucleusYOffset, 0);
+  importSurfaceGroup.position.y = materialControls.nucleusYOffset;
   nucleusMesh.scale.setScalar(Math.max(0.05, materialControls.nucleusSize));
   if (nucleusShellMeshes.length) {
     const layerCount = Math.max(1, nucleusShellMeshes.length);
@@ -772,6 +1225,21 @@ function syncNucleusMesh() {
   updateOrbitFocus();
 }
 
+function forceApplyNucleusYOffset() {
+  const y = Number(nucleusYOffsetInput?.value ?? materialControls.nucleusYOffset ?? 0);
+  if (!Number.isFinite(y)) return;
+  materialControls.nucleusYOffset = y;
+  if (nucleusMesh) nucleusMesh.position.set(0, y, 0);
+  importSurfaceGroup.position.y = y;
+  if (nucleusShellMeshes.length) {
+    for (let i = 0; i < nucleusShellMeshes.length; i++) {
+      nucleusShellMeshes[i].position.y = y;
+    }
+  }
+  if (nucleusRimMesh) nucleusRimMesh.position.y = y;
+  if (nucleusGradientMesh) nucleusGradientMesh.position.y = y;
+}
+
 function updateOrbitFocus() {
   const hasNucleus = !!(nucleusMesh && nucleusMesh.visible);
   controls.target.set(0, 0, 0);
@@ -804,49 +1272,196 @@ function updateNucleusDynamicEnv() {
   nucleusShellMaterial.envMap = nucleusDynamicEnvRT.texture;
 }
 
+function updateImportedSurfaceDynamicEnv() {
+  if (customReflectionEnvMap) {
+    importedSurfaceMaterial.envMap = customReflectionEnvMap;
+    return;
+  }
+  if (!importSurfaceGroup.visible || !importSurfaceGroup.children.length) return;
+  importedEnvFrame = (importedEnvFrame + 1) % 4;
+  if (importedEnvFrame !== 0) return;
+  importedEnvBox.setFromObject(importSurfaceGroup);
+  if (importedEnvBox.isEmpty()) return;
+  importedEnvBox.getCenter(importedEnvCenter);
+  const wasVisible = importSurfaceGroup.visible;
+  const sceneryWasVisible = reflectionSceneryGroup.visible;
+  importSurfaceGroup.visible = false;
+  reflectionSceneryGroup.visible = true;
+  importedCubeCamera.position.copy(importedEnvCenter);
+  importedCubeCamera.update(renderer, scene);
+  importSurfaceGroup.visible = wasVisible;
+  reflectionSceneryGroup.visible = sceneryWasVisible;
+  importedSurfaceMaterial.envMap = importedDynamicEnvRT.texture;
+}
+
+function loadReflectionImageEnv(url, label = "Reflection image", revokeAfterLoad = false) {
+  if (!url) return;
+  const loader = new THREE.TextureLoader();
+  loader.load(
+    url,
+    (tex) => {
+      tex.mapping = THREE.EquirectangularReflectionMapping;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      const envRT = pmremGenerator.fromEquirectangular(tex);
+      customReflectionTexture?.dispose?.();
+      customReflectionEnvRT?.dispose?.();
+      customReflectionTexture = tex;
+      customReflectionEnvRT = envRT;
+      customReflectionEnvMap = envRT.texture;
+      scene.environment = customReflectionEnvMap;
+      importedSurfaceMaterial.envMap = customReflectionEnvMap;
+      importedSurfaceMaterial.needsUpdate = true;
+      setStatus(`${label} applied (hidden, reflections only).`);
+      if (revokeAfterLoad) URL.revokeObjectURL(url);
+    },
+    undefined,
+    (err) => {
+      console.error(err);
+      setStatus("Could not load reflection image.", true);
+      if (revokeAfterLoad) URL.revokeObjectURL(url);
+    }
+  );
+}
+
+function applyLoadedReflectionEnvTexture(tex, label, revokeUrl = null) {
+  tex.mapping = THREE.EquirectangularReflectionMapping;
+  const envRT = pmremGenerator.fromEquirectangular(tex);
+  customReflectionTexture?.dispose?.();
+  customReflectionEnvRT?.dispose?.();
+  customReflectionTexture = tex;
+  customReflectionEnvRT = envRT;
+  customReflectionEnvMap = envRT.texture;
+  scene.environment = customReflectionEnvMap;
+  importedSurfaceMaterial.envMap = customReflectionEnvMap;
+  importedSurfaceMaterial.needsUpdate = true;
+  setStatus(`${label} (hidden, reflections only).`);
+  if (revokeUrl) URL.revokeObjectURL(revokeUrl);
+}
+
+function loadReflectionImageEnvFromFile(file) {
+  if (!file) return;
+  const objectUrl = URL.createObjectURL(file);
+  const lowerName = String(file.name || "").toLowerCase();
+  const isExr = lowerName.endsWith(".exr");
+  const isHdr = lowerName.endsWith(".hdr");
+  if (!isExr && !isHdr) {
+    loadReflectionImageEnv(objectUrl, `Reflection image applied: ${file.name}`, true);
+    return;
+  }
+
+  const highRangeLoader = isHdr ? new RGBELoader() : new EXRLoader();
+  highRangeLoader.load(
+    objectUrl,
+    (tex) => applyLoadedReflectionEnvTexture(tex, `Reflection ${isHdr ? "HDR" : "EXR"} applied: ${file.name}`, objectUrl),
+    undefined,
+    (err) => {
+      console.error(err);
+      setStatus(`Could not load reflection ${isHdr ? "HDR" : "EXR"}.`, true);
+      URL.revokeObjectURL(objectUrl);
+    }
+  );
+}
+
+function loadReflectionImageEnvFromUrl(url, label = "Reflection image") {
+  const lower = String(url || "").toLowerCase();
+  if (lower.endsWith(".exr") || lower.endsWith(".hdr")) {
+    return new Promise((resolve) => {
+      const highRangeLoader = lower.endsWith(".hdr") ? new RGBELoader() : new EXRLoader();
+      highRangeLoader.load(
+        url,
+        (tex) => {
+          applyLoadedReflectionEnvTexture(tex, `${label} applied`);
+          resolve(true);
+        },
+        undefined,
+        (err) => {
+          console.error(err);
+          setStatus(`Could not load ${label.toLowerCase()}.`, true);
+          resolve(false);
+        }
+      );
+    });
+  }
+  return new Promise((resolve) => {
+    const loader = new THREE.TextureLoader();
+    loader.load(
+      url,
+      (tex) => {
+        tex.mapping = THREE.EquirectangularReflectionMapping;
+        tex.colorSpace = THREE.SRGBColorSpace;
+        const envRT = pmremGenerator.fromEquirectangular(tex);
+        customReflectionTexture?.dispose?.();
+        customReflectionEnvRT?.dispose?.();
+        customReflectionTexture = tex;
+        customReflectionEnvRT = envRT;
+        customReflectionEnvMap = envRT.texture;
+        scene.environment = customReflectionEnvMap;
+        importedSurfaceMaterial.envMap = customReflectionEnvMap;
+        importedSurfaceMaterial.needsUpdate = true;
+        setStatus(`${label} applied (hidden, reflections only).`);
+        resolve(true);
+      },
+      undefined,
+      (err) => {
+        console.error(err);
+        setStatus(`Could not load ${label.toLowerCase()}.`, true);
+        resolve(false);
+      }
+    );
+  });
+}
+
+async function loadCustomMeshFromFile(file, statusPrefix = "Mesh loaded") {
+  if (!file) return false;
+  customMeshFile = file;
+  setStatus("Loading mesh shape...");
+  try {
+    const asset = await buildMeshAssetFromFile(file, sphereCount, baseShapeRadius);
+    customMeshPoints = asset.points;
+    customMeshSurfaceRoot = asset.root;
+    importedSurfaceVisible = true;
+    if (showImportedSurfaceInput) showImportedSurfaceInput.checked = true;
+    buildImportedSurface(customMeshSurfaceRoot);
+    applyMaterialControls();
+    customMeshOption.disabled = false;
+    shapeSelect.value = "custom-mesh";
+    applyPresetFromSelect();
+    setStatus(`${statusPrefix}: ${file.name}`);
+    return true;
+  } catch (err) {
+    console.error(err);
+    setStatus(err.message || "Could not build shape from that mesh.", true);
+    return false;
+  }
+}
+
+async function loadCustomMeshFromUrl(url, filename = DEFAULT_STARTUP_MESH_FILENAME, statusPrefix = "Startup mesh loaded") {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    const file = new File([blob], filename, { type: blob.type || "model/gltf-binary" });
+    return await loadCustomMeshFromFile(file, statusPrefix);
+  } catch (err) {
+    console.error(err);
+    setStatus(`Could not load startup mesh (${filename}).`, true);
+    return false;
+  }
+}
+
 const motionControls = {
-  travelSpeed: Number(travelSpeedInput?.value ?? 8),
-  turbulence: Number(turbulenceInput?.value ?? 0),
-  turbulenceRipple: Number(turbulenceRippleInput?.value ?? 0),
-  rippleCount: Number(rippleCountInput?.value ?? 4),
-  rippleSize: Number(rippleSizeInput?.value ?? 1),
-  externalSize: Number(externalSizeInput?.value ?? 1),
-  internalSpeed: Number(internalSpeedInput?.value ?? 0.8),
-  internalSize: Number(internalSizeInput?.value ?? 0.9),
-  innerWarp: Number(innerWarpInput?.value ?? 0),
-  sphereGap: Number(sphereGapInput?.value ?? 0.19),
-  cursorSize: Number(cursorSizeInput?.value ?? 4.0),
-  cursorForce: Number(cursorForceInput?.value ?? 2.4),
-  cursorLinkDistance: Number(cursorLinkDistanceInput?.value ?? 2.8),
-  tornadoBatchRings: Number(tornadoBatchRingsInput?.value ?? 3),
-  tornadoBatchOffset: Number(tornadoBatchOffsetInput?.value ?? 0.04),
-  tornadoSkew: Number(tornadoSkewInput?.value ?? 0),
-  tornadoImperfection: Number(tornadoImperfectionInput?.value ?? 1)
+  travelSpeed: Number(travelSpeedInput?.value ?? 8)
 };
 
 function readMotionControls() {
   motionControls.travelSpeed = Number(travelSpeedInput?.value ?? motionControls.travelSpeed);
-  motionControls.turbulence = Number(turbulenceInput?.value ?? motionControls.turbulence);
-  motionControls.turbulenceRipple = Number(turbulenceRippleInput?.value ?? motionControls.turbulenceRipple);
-  motionControls.rippleCount = Number(rippleCountInput?.value ?? motionControls.rippleCount);
-  motionControls.rippleSize = Number(rippleSizeInput?.value ?? motionControls.rippleSize);
-  motionControls.externalSize = Number(externalSizeInput?.value ?? motionControls.externalSize);
-  motionControls.internalSpeed = Number(internalSpeedInput?.value ?? motionControls.internalSpeed);
-  motionControls.internalSize = Number(internalSizeInput?.value ?? motionControls.internalSize);
-  motionControls.innerWarp = Number(innerWarpInput?.value ?? motionControls.innerWarp);
-  motionControls.sphereGap = Number(sphereGapInput?.value ?? motionControls.sphereGap);
-  motionControls.cursorSize = Number(cursorSizeInput?.value ?? motionControls.cursorSize);
-  motionControls.cursorForce = Number(cursorForceInput?.value ?? motionControls.cursorForce);
-  motionControls.cursorLinkDistance = Number(cursorLinkDistanceInput?.value ?? motionControls.cursorLinkDistance);
-  motionControls.tornadoBatchRings = Number(tornadoBatchRingsInput?.value ?? motionControls.tornadoBatchRings);
-  motionControls.tornadoBatchOffset = Number(tornadoBatchOffsetInput?.value ?? motionControls.tornadoBatchOffset);
-  motionControls.tornadoSkew = Number(tornadoSkewInput?.value ?? motionControls.tornadoSkew);
-  motionControls.tornadoImperfection = Number(tornadoImperfectionInput?.value ?? motionControls.tornadoImperfection);
 }
 
 function applyMaterialControls() {
   const internalDetails = internalDetailShadingInput?.checked ?? true;
   const sphereShadowsEnabled = (sphereShadowsInput?.checked ?? true) && particleLightingEnabled;
+  const shadowContrast = THREE.MathUtils.clamp(materialControls.shadowContrast ?? 1, 0, 2.5);
+  contactShadowPlane.material.opacity = 0;
   const nucleusTransmission = THREE.MathUtils.clamp(materialControls.nucleusTransmission ?? 0.18, 0, 1);
   const nucleusTintMix = THREE.MathUtils.clamp(materialControls.nucleusReflectTintMix ?? 0, 0, 1);
   const finalNucleusColor = new THREE.Color(materialControls.nucleusColor);
@@ -876,7 +1491,7 @@ function applyMaterialControls() {
   externalParticleMaterial.roughness = extBaseRoughness * (1 - extMatte) + 1.0 * extMatte;
   externalParticleMaterial.emissive.set(0x050505);
   externalParticleMaterial.emissiveIntensity = 0.04 + materialControls.glow * 0.14;
-  externalShadowUniforms.uSharedShadowStrength.value = sphereShadowsEnabled ? 0.5 : 0.0;
+  externalShadowUniforms.uSharedShadowStrength.value = sphereShadowsEnabled ? 0.5 * shadowContrast : 0.0;
   externalShadowUniforms.uSharedShadowSoftness.value = 0.2;
   const chromeGlare = Math.max(0, Math.min(1, materialControls.nucleusGlare));
   const nucleusMatte = Math.max(0, Math.min(1, materialControls.nucleusMatte));
@@ -949,7 +1564,7 @@ function applyMaterialControls() {
   nucleusMaterial.forceSinglePass = roundGlassShape || materialControls.nucleusOpacity < 0.999;
   const nucleusSupportsSharedShadow = materialControls.nucleusShape === "cube";
   nucleusShadowUniforms.uSharedShadowStrength.value =
-    sphereShadowsEnabled && nucleusSupportsSharedShadow ? 0.2 : 0.0;
+    sphereShadowsEnabled && nucleusSupportsSharedShadow ? 0.2 * shadowContrast : 0.0;
   nucleusShadowUniforms.uSharedShadowSoftness.value = 0.28;
   if (!nucleusNoiseTexture) nucleusNoiseTexture = makeNoiseTexture(256);
   const noiseAmount = Math.max(0, materialControls.nucleusNoiseAmount ?? 0);
@@ -986,8 +1601,13 @@ function applyMaterialControls() {
   nucleusShellMaterial.side = roundNucleusLayers ? THREE.FrontSide : THREE.DoubleSide;
   if (roundGlassShape) nucleusShellMaterial.thickness = Math.min(nucleusShellMaterial.thickness, 0.16);
   nucleusRimMaterial.uniforms.uColor.value.set(materialControls.nucleusRimColor || "#cfe3ff");
-  nucleusRimMaterial.uniforms.uPower.value = Math.max(0.5, materialControls.nucleusRimPower ?? 2.6);
-  nucleusRimMaterial.uniforms.uStrength.value = Math.max(0, materialControls.nucleusRimStrength ?? 0.35);
+  const rimPowerRaw = THREE.MathUtils.clamp(materialControls.nucleusRimPower ?? 2.6, 0.5, 8.0);
+  const rimPowerNorm = (rimPowerRaw - 0.5) / 7.5;
+  const rimPowerMapped = THREE.MathUtils.lerp(0.2, 11.5, Math.pow(rimPowerNorm, 1.15));
+  const rimStrengthRaw = Math.max(0, materialControls.nucleusRimStrength ?? 0.35);
+  const rimStrengthMapped = rimStrengthRaw * THREE.MathUtils.lerp(1.35, 0.9, rimPowerNorm);
+  nucleusRimMaterial.uniforms.uPower.value = rimPowerMapped;
+  nucleusRimMaterial.uniforms.uStrength.value = rimStrengthMapped;
   nucleusGradientMaterial.uniforms.uTop.value.set(materialControls.nucleusGradientTop || "#ffffff");
   nucleusGradientMaterial.uniforms.uBottom.value.set(materialControls.nucleusGradientBottom || "#7ea5ff");
   nucleusGradientMaterial.uniforms.uMix.value = Math.max(0, Math.min(1, materialControls.nucleusGradientMix ?? 0.15));
@@ -995,7 +1615,6 @@ function applyMaterialControls() {
   bloomPass.radius = Math.max(0, Math.min(1, materialControls.nucleusBloomRadius ?? 0.35));
   bloomPass.threshold = Math.max(0, Math.min(1, materialControls.nucleusBloomThreshold ?? 0.75));
   bloomPass.enabled = !!materialControls.nucleusBloomEnabled;
-  syncImportedSurfaceMaterials();
 
   if (internalDetails) {
     const intBaseMetalness = 0.06 + materialControls.glare * 0.45;
@@ -1005,7 +1624,7 @@ function applyMaterialControls() {
     internalParticleMaterial.roughness = intBaseRoughness * (1 - intMatte) + 1.0 * intMatte;
     internalParticleMaterial.emissive.set(0x050505);
     internalParticleMaterial.emissiveIntensity = 0.04 + materialControls.glow * 0.14;
-    internalShadowUniforms.uSharedShadowStrength.value = sphereShadowsEnabled ? 0.5 : 0.0;
+    internalShadowUniforms.uSharedShadowStrength.value = sphereShadowsEnabled ? 0.5 * shadowContrast : 0.0;
     internalShadowUniforms.uSharedShadowSoftness.value = 0.2;
   } else {
     internalParticleMaterial.metalness = 0.0;
@@ -1024,8 +1643,99 @@ function applyMaterialControls() {
   externalParticleBasicMaterial.needsUpdate = true;
   internalParticleBasicMaterial.needsUpdate = true;
   nucleusBasicMaterial.needsUpdate = true;
-  rimLight.intensity = 1.1 + materialControls.glow * 0.9;
-  syncNucleusMesh();
+
+  // Imported surface: physically-plausible glass settings.
+  const surfaceChroma = THREE.MathUtils.clamp(materialControls.surfaceChroma ?? 0, 0, 1);
+  const importedOpacity = THREE.MathUtils.clamp(materialControls.nucleusOpacity ?? 1, 0.2, 1);
+  const requestedTransmission = THREE.MathUtils.clamp(materialControls.nucleusTransmission ?? 1, 0, 1);
+  const glassVisibility = THREE.MathUtils.smoothstep(importedOpacity, 0.86, 1.0);
+  const depthTransmissionCut = THREE.MathUtils.clamp((materialControls.nucleusThickness ?? 1.2) * 0.035, 0, 0.2);
+  const physicalTransmission = requestedTransmission * glassVisibility * (1 - depthTransmissionCut);
+  const importedThickness = THREE.MathUtils.clamp(materialControls.nucleusThickness ?? 1.2, 0.1, 6.0);
+  const importedIor = THREE.MathUtils.clamp(materialControls.nucleusIor ?? 1.52, 1.45, 1.7);
+  const microRoughness = THREE.MathUtils.clamp((materialControls.nucleusNoiseAmount ?? 0) * 0.03, 0, 0.04);
+  const baseRoughness = THREE.MathUtils.lerp(0.008, 0.09, nucleusMatte);
+  const roughnessFromThickness = THREE.MathUtils.clamp(importedThickness * 0.007, 0, 0.03);
+  const glassRoughness = THREE.MathUtils.clamp(
+    baseRoughness + microRoughness + roughnessFromThickness,
+    0.006,
+    0.12
+  );
+
+  // Keep color control visibly responsive while preserving a glassy highlight lift.
+  importedSurfaceMaterial.color.copy(finalNucleusColor).lerp(new THREE.Color("#f6fbff"), 0.22);
+  importedSurfaceMaterial.opacity = importedOpacity;
+  importedSurfaceMaterial.transmission = physicalTransmission;
+  importedSurfaceMaterial.roughness = glassRoughness;
+  importedSurfaceMaterial.metalness = 0;
+  importedSurfaceMaterial.ior = importedIor;
+  const depthDetailBoost = THREE.MathUtils.clamp(
+    0.82 + importedThickness * 0.2 + (materialControls.nucleusNoiseAmount ?? 0) * 0.22,
+    0.9,
+    2.15
+  );
+  importedSurfaceMaterial.thickness = THREE.MathUtils.clamp(importedThickness * depthDetailBoost, 0.2, 8.5);
+  const thicknessUvScale = THREE.MathUtils.clamp((materialControls.nucleusNoiseScale ?? 1.4) * 0.95, 0.6, 4.8);
+  importedThicknessTexture.repeat.set(thicknessUvScale, thicknessUvScale);
+  importedThicknessTexture.needsUpdate = true;
+  importedSurfaceMaterial.thicknessMap = importedThicknessTexture;
+  const chromaTint = new THREE.Color(finalNucleusColor);
+  chromaTint.offsetHSL(0.06 * surfaceChroma, 0.2 * surfaceChroma, 0.04 * surfaceChroma);
+  importedSurfaceMaterial.attenuationColor.copy(finalNucleusColor).lerp(new THREE.Color("#ffffff"), 0.22 - surfaceChroma * 0.08);
+  importedSurfaceMaterial.attenuationDistance = THREE.MathUtils.clamp(
+    (materialControls.nucleusAttenuationDistance ?? 4.0) / (0.45 + importedSurfaceMaterial.thickness * 0.36),
+    0.14,
+    8.5
+  );
+  importedSurfaceMaterial.specularIntensity = THREE.MathUtils.clamp((materialControls.nucleusSpecular ?? 1.0) * 1.15, 1.0, 1.35);
+  importedSurfaceMaterial.specularColor
+    .set(materialControls.nucleusSpecularColor || "#ffffff")
+    .lerp(finalNucleusColor, 0.3 + surfaceChroma * 0.25);
+  importedSurfaceMaterial.clearcoat = THREE.MathUtils.clamp((materialControls.nucleusClearcoat ?? 0.4) * 0.45, 0.06, 0.42);
+  importedSurfaceMaterial.clearcoatRoughness = THREE.MathUtils.clamp(
+    0.045 + (materialControls.nucleusClearcoatRoughness ?? 0.08) * 0.15,
+    0.035,
+    0.16
+  );
+  importedSurfaceMaterial.iridescence = THREE.MathUtils.clamp(surfaceChroma * 0.42, 0, 0.42);
+  importedSurfaceMaterial.iridescenceIOR = THREE.MathUtils.clamp(THREE.MathUtils.lerp(1.3, 1.75, surfaceChroma), 1.3, 1.9);
+  importedSurfaceMaterial.iridescenceThicknessRange = [
+    Math.round(120 + surfaceChroma * 120),
+    Math.round(220 + surfaceChroma * 920)
+  ];
+  if (!nucleusNoiseTexture) nucleusNoiseTexture = makeNoiseTexture(256);
+  nucleusNoiseTexture.repeat.set(
+    Math.max(0.8, materialControls.nucleusNoiseScale ?? 1.4),
+    Math.max(0.8, materialControls.nucleusNoiseScale ?? 1.4)
+  );
+  importedSurfaceMaterial.bumpMap = nucleusNoiseTexture;
+  importedSurfaceMaterial.bumpScale = microRoughness * 0.25;
+  importedSurfaceMaterial.roughnessMap = nucleusNoiseTexture;
+  const reflectionStrength = THREE.MathUtils.clamp(materialControls.reflectionStrength ?? 1.8, 0, 4);
+  const customReflectionBoost = customReflectionEnvMap ? 1.45 : 1.0;
+  importedSurfaceMaterial.envMap = customReflectionEnvMap || importedSurfaceMaterial.envMap || chromeEnvMap;
+  importedSurfaceMaterial.envMapIntensity = THREE.MathUtils.clamp(
+    (materialControls.nucleusEnvIntensity ?? 3.2) *
+      (0.62 + physicalTransmission * 0.36 - glassRoughness * 0.45 + surfaceChroma * 0.15) *
+      reflectionStrength *
+      customReflectionBoost,
+    0.8,
+    6.2
+  );
+  importedSurfaceMaterial.emissive.set(0x000000);
+  importedSurfaceMaterial.emissiveIntensity = 0;
+  importedSurfaceMaterial.alphaHash = false;
+  importedSurfaceMaterial.alphaTest = 0;
+  importedSurfaceMaterial.transparent = importedOpacity < 0.999;
+  importedSurfaceMaterial.side = THREE.FrontSide;
+  importedSurfaceMaterial.shadowSide = THREE.FrontSide;
+  importedSurfaceMaterial.depthWrite = importedOpacity >= 0.999;
+  importedSurfaceMaterial.forceSinglePass = false;
+  importedSurfaceMaterial.depthTest = true;
+  importedShadowUniforms.uSharedShadowStrength.value = sphereShadowsEnabled ? 0.18 * shadowContrast : 0.0;
+  importedShadowUniforms.uSharedShadowSoftness.value = 0.34;
+  importedSurfaceMaterial.needsUpdate = true;
+  syncImportedSurfaceMaterials();
 }
 
 let particles = [];
@@ -1072,13 +1782,11 @@ let nucleusRimMesh = null;
 let nucleusGradientMesh = null;
 let nucleusEnvFrame = 0;
 const nucleusVisibleOnStartup = false;
-let movementMode = movementModeInput?.value || "normal";
-let internalMovementMode = internalMovementInput?.value || "normal";
+let movementMode = FIXED_MOVEMENT_MODE;
+let internalMovementMode = FIXED_INTERNAL_MOVEMENT_MODE;
 let oneWayDirection = "right";
-let gridEnabled = gridEnabledInput?.checked ?? true;
 let collisionEnabled = collisionEnabledInput?.checked ?? true;
-let faceMinTravel = Number(faceMinTravelInput?.value) || 18;
-let gridLineColor = gridColorInput?.value || "#d0d0d0";
+let faceMinTravel = FIXED_FACE_MIN_TRAVEL;
 let forceAllSurfacePoints = false;
 const radialDirs = [
   new THREE.Vector3(1, 0, 0),
@@ -1086,97 +1794,9 @@ const radialDirs = [
   new THREE.Vector3(0, 1, 0),
   new THREE.Vector3(0, -1, 0)
 ];
-function clearImportCage() {
-  for (let i = importCageGroup.children.length - 1; i >= 0; i--) {
-    const child = importCageGroup.children[i];
-    if (child.geometry) child.geometry.dispose();
-    if (child.material) {
-      if (Array.isArray(child.material)) child.material.forEach((m) => m.dispose());
-      else child.material.dispose();
-    }
-    importCageGroup.remove(child);
-  }
-}
-
-function rebuildImportCage(points, enabled) {
-  clearImportCage();
-  if (!enabled || !gridEnabled || !points.length) return;
-
-  const box = new THREE.Box3();
-  for (let i = 0; i < points.length; i++) box.expandByPoint(points[i]);
-  const size = box.getSize(new THREE.Vector3());
-  const min = box.min.clone();
-  const pad = Math.max(0.2, Math.max(size.x, size.y, size.z) * 0.03);
-  min.subScalar(pad);
-  const paddedSize = size.clone().addScalar(pad * 2);
-
-  const maxDim = Math.max(paddedSize.x, paddedSize.y, paddedSize.z);
-  const baseDiv = 13;
-  const cell = Math.max(0.2, maxDim / baseDiv);
-  const nx = Math.max(2, Math.ceil(paddedSize.x / cell));
-  const ny = Math.max(2, Math.ceil(paddedSize.y / cell));
-  const nz = Math.max(2, Math.ceil(paddedSize.z / cell));
-
-  const occupied = new Set();
-  const toKey = (x, y, z) => `${x},${y},${z}`;
-  const fromKey = (key) => key.split(",").map((n) => Number(n));
-
-  for (let i = 0; i < points.length; i++) {
-    const p = points[i];
-    let x = Math.floor((p.x - min.x) / cell);
-    let y = Math.floor((p.y - min.y) / cell);
-    let z = Math.floor((p.z - min.z) / cell);
-    x = Math.max(0, Math.min(nx - 1, x));
-    y = Math.max(0, Math.min(ny - 1, y));
-    z = Math.max(0, Math.min(nz - 1, z));
-    occupied.add(toKey(x, y, z));
-  }
-
-  const shell = new Set();
-  const dirs = [
-    [1, 0, 0], [-1, 0, 0], [0, 1, 0],
-    [0, -1, 0], [0, 0, 1], [0, 0, -1]
-  ];
-  occupied.forEach((key) => {
-    const [x, y, z] = fromKey(key);
-    for (let i = 0; i < dirs.length; i++) {
-      const nx0 = x + dirs[i][0];
-      const ny0 = y + dirs[i][1];
-      const nz0 = z + dirs[i][2];
-      if (nx0 < 0 || nx0 >= nx || ny0 < 0 || ny0 >= ny || nz0 < 0 || nz0 >= nz || !occupied.has(toKey(nx0, ny0, nz0))) {
-        shell.add(key);
-        break;
-      }
-    }
-  });
-
-  const edgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(cell * 0.95, cell * 0.95, cell * 0.95));
-  const maxCubes = 1200;
-  let placed = 0;
-  shell.forEach((key) => {
-    if (placed >= maxCubes) return;
-    const [x, y, z] = fromKey(key);
-    const cx = min.x + (x + 0.5) * cell;
-    const cy = min.y + (y + 0.5) * cell;
-    const cz = min.z + (z + 0.5) * cell;
-    const lines = new THREE.LineSegments(
-      edgeGeo.clone(),
-      new THREE.LineBasicMaterial({
-        color: gridLineColor,
-        transparent: true,
-        opacity: 0.36
-      })
-    );
-    lines.position.set(cx, cy, cz);
-    importCageGroup.add(lines);
-    placed++;
-  });
-
-  edgeGeo.dispose();
-}
 
 function randomParticleMotion(p) {
-  const internalMul = p.isInternal ? motionControls.internalSpeed : 1;
+  const internalMul = p.isInternal ? FIXED_INTERNAL_SPEED : 1;
   p.pathSpeed = (0.08 + motionControls.travelSpeed * 0.018) * internalMul;
   p.followRate = p.isInternal ? 9.8 : 8.8;
   p.turnTimer = 0.16;
@@ -1388,15 +2008,6 @@ function noise2D(x, y) {
   return ab + (cd - ab) * sy;
 }
 
-function seedUnitVector(seedA, seedB) {
-  const x = hash2(seedA + 13.17, seedB + 3.91) * 2 - 1;
-  const y = hash2(seedA + 29.53, seedB + 11.47) * 2 - 1;
-  const z = hash2(seedA + 47.21, seedB + 19.33) * 2 - 1;
-  tempPointC.set(x, y, z);
-  if (tempPointC.lengthSq() < 0.000001) return tempPointC.set(0, 1, 0);
-  return tempPointC.normalize();
-}
-
 function getTravelDirectionSign() {
   return oneWayDirection === "left" || oneWayDirection === "down" ? -1 : 1;
 }
@@ -1435,7 +2046,7 @@ function writeInstances(elapsed = 0) {
   for (let i = 0; i < particles.length; i++) {
     const p = particles[i];
     instanceDummy.position.copy(p.pos);
-    const scale = p.isInternal ? motionControls.internalSize : motionControls.externalSize;
+    const scale = p.isInternal ? FIXED_INTERNAL_SIZE : FIXED_EXTERNAL_SIZE;
     instanceDummy.scale.setScalar(scale);
     instanceDummy.updateMatrix();
     if (p.isInternal && internalIndex < maxInternal) {
@@ -1509,7 +2120,6 @@ function rebuildSpheres(count) {
       pathSpeed: 0,
       followRate: 0,
       turnTimer: 0,
-      cursorTear: 0,
       sepVel: new THREE.Vector3(),
       normalStep: 1,
       radialDir: (Math.random() * 4) | 0,
@@ -1525,9 +2135,6 @@ function rebuildSpheres(count) {
       oneWayOffset: 0,
       isInternal: false,
       internalDepth: 0.8,
-      turbulenceSeedA: Math.random() * 100,
-      turbulenceSeedB: Math.random() * 100,
-      turbulenceSeedC: Math.random() * 100,
       tornadoPhaseJitter: 0.92 + Math.random() * 0.16,
       tornadoBowAmp: 0.02 + Math.random() * 0.05,
       tornadoShearAmp: 0.01 + Math.random() * 0.035,
@@ -2191,58 +2798,7 @@ function rebuildGridTravelLines(points) {
   gridRowIds = [];
   gridColBands = [];
   gridColIds = [];
-  if (!points.length) return;
-
-  const box = new THREE.Box3();
-  for (let i = 0; i < points.length; i++) box.expandByPoint(points[i]);
-  const size = box.getSize(new THREE.Vector3());
-  const min = box.min.clone();
-  const sx = Math.max(0.0001, size.x);
-  const sy = Math.max(0.0001, size.y);
-  const sz = Math.max(0.0001, size.z);
-  const div = Math.max(5, Math.round(Math.cbrt(points.length) * 0.9));
-
-  const rowMap = new Map();
-  const colMap = new Map();
-  const rowKey = (iy, iz) => `${iy},${iz}`;
-  const colKey = (ix, iz) => `${ix},${iz}`;
-
-  for (let i = 0; i < points.length; i++) {
-    const p = points[i];
-    const ix = Math.max(0, Math.min(div - 1, Math.floor(((p.x - min.x) / sx) * div)));
-    const iy = Math.max(0, Math.min(div - 1, Math.floor(((p.y - min.y) / sy) * div)));
-    const iz = Math.max(0, Math.min(div - 1, Math.floor(((p.z - min.z) / sz) * div)));
-
-    const rk = rowKey(iy, iz);
-    if (!rowMap.has(rk)) rowMap.set(rk, []);
-    rowMap.get(rk).push(i);
-
-    const ck = colKey(ix, iz);
-    if (!colMap.has(ck)) colMap.set(ck, []);
-    colMap.get(ck).push(i);
-  }
-
-  rowMap.forEach((list) => list.sort((a, b) => points[a].x - points[b].x));
-  colMap.forEach((list) => list.sort((a, b) => points[a].y - points[b].y));
-
-  gridRowBands = Array.from(rowMap.values());
-  gridColBands = Array.from(colMap.values());
-  for (let i = 0; i < gridRowBands.length; i++) {
-    if (gridRowBands[i].length > 1) gridRowIds.push(i);
-  }
-  for (let i = 0; i < gridColBands.length; i++) {
-    if (gridColBands[i].length > 1) gridColIds.push(i);
-  }
-  if (!gridRowIds.length) {
-    for (let i = 0; i < gridRowBands.length; i++) {
-      if (gridRowBands[i].length > 0) gridRowIds.push(i);
-    }
-  }
-  if (!gridColIds.length) {
-    for (let i = 0; i < gridColBands.length; i++) {
-      if (gridColBands[i].length > 0) gridColIds.push(i);
-    }
-  }
+  return;
 }
 
 function chooseNextIndexNormal(p) {
@@ -2577,7 +3133,7 @@ function buildOneWayBandOrder(totalCount) {
   return order;
 }
 
-function applyBasePoints(basePoints, showImportCage = false, forceSurface = false) {
+function applyBasePoints(basePoints, forceSurface = false) {
   if (!basePoints.length || particles.length === 0) return;
 
   const min = new THREE.Vector3(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY);
@@ -2600,8 +3156,6 @@ function applyBasePoints(basePoints, showImportCage = false, forceSurface = fals
       currentShapePoints[i].multiplyScalar(scale);
     }
   }
-  rebuildImportCage(currentShapePoints, showImportCage);
-
   forceAllSurfacePoints = !!forceSurface;
   buildShapeTravelData(currentShapePoints, forceAllSurfacePoints);
   const surfaceSeedOffset = surfacePointIndices.length ? ((Math.random() * surfacePointIndices.length) | 0) : 0;
@@ -2818,7 +3372,7 @@ function applyPresetFromSelect() {
       setStatus("Upload an image first, then choose Custom Image.", true);
       return;
     }
-    applyBasePoints(customImagePoints, true, false);
+    applyBasePoints(customImagePoints, false);
     setStatus("Applied custom image shape.");
     return;
   }
@@ -2828,71 +3382,16 @@ function applyPresetFromSelect() {
       setStatus("Upload a mesh first, then choose Custom Mesh.", true);
       return;
     }
-    applyBasePoints(customMeshPoints, true, true);
+    applyBasePoints(customMeshPoints, true);
     syncImportedSurfaceVisibility();
     setStatus("Applied custom mesh shape.");
     return;
   }
 
-  applyBasePoints(buildPresetShapePoints(selected, sphereCount, baseShapeRadius), false, false);
+  applyBasePoints(buildPresetShapePoints(selected, sphereCount, baseShapeRadius), false);
   syncImportedSurfaceVisibility();
   setStatus(`Applied preset: ${selected}.`);
 }
-
-function applyGridToggle() {
-  gridEnabled = gridEnabledInput?.checked ?? true;
-  if (!gridEnabled) {
-    clearImportCage();
-    setStatus("Grid hidden.");
-    return;
-  }
-  applyPresetFromSelect();
-}
-
-function applyGridLineColor() {
-  gridLineColor = gridColorInput?.value || gridLineColor;
-  for (let i = 0; i < importCageGroup.children.length; i++) {
-    const child = importCageGroup.children[i];
-    if (child?.material?.color) {
-      child.material.color.set(gridLineColor);
-      child.material.needsUpdate = true;
-    }
-  }
-}
-
-const pointerNdc = new THREE.Vector2(99, 99);
-const pointerPrevNdc = new THREE.Vector2(99, 99);
-let cursorActive = false;
-let pointerMotionEnergy = 0;
-
-function updatePointer(clientX, clientY) {
-  const nx = (clientX / window.innerWidth) * 2 - 1;
-  const ny = -(clientY / window.innerHeight) * 2 + 1;
-  if (Math.abs(pointerPrevNdc.x) <= 1.5 && Math.abs(pointerPrevNdc.y) <= 1.5) {
-    const dx = nx - pointerPrevNdc.x;
-    const dy = ny - pointerPrevNdc.y;
-    const speed = Math.sqrt(dx * dx + dy * dy);
-    pointerMotionEnergy = Math.max(pointerMotionEnergy * 0.55, Math.min(1, speed * 24));
-  }
-  pointerNdc.set(nx, ny);
-  pointerPrevNdc.set(nx, ny);
-  cursorActive = true;
-}
-
-window.addEventListener("pointermove", (e) => updatePointer(e.clientX, e.clientY));
-window.addEventListener("mousemove", (e) => updatePointer(e.clientX, e.clientY));
-window.addEventListener("pointerleave", () => {
-  pointerNdc.set(99, 99);
-  pointerPrevNdc.set(99, 99);
-  pointerMotionEnergy = 0;
-  cursorActive = false;
-});
-window.addEventListener("mouseleave", () => {
-  pointerNdc.set(99, 99);
-  pointerPrevNdc.set(99, 99);
-  pointerMotionEnergy = 0;
-  cursorActive = false;
-});
 
 imageInput.addEventListener("change", async (e) => {
   const file = e.target.files?.[0];
@@ -2918,21 +3417,17 @@ imageInput.addEventListener("change", async (e) => {
 meshInput.addEventListener("change", async (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
-  customMeshFile = file;
-  setStatus("Loading mesh shape...");
-  try {
-    const asset = await buildMeshAssetFromFile(file, sphereCount, baseShapeRadius);
-    customMeshPoints = asset.points;
-    customMeshSurfaceRoot = asset.root;
-    buildImportedSurface(customMeshSurfaceRoot);
-    customMeshOption.disabled = false;
-    shapeSelect.value = "custom-mesh";
-    applyPresetFromSelect();
-    setStatus(`Mesh loaded: ${file.name}`);
-  } catch (err) {
-    console.error(err);
-    setStatus(err.message || "Could not build shape from that mesh.", true);
-  }
+  await loadCustomMeshFromFile(file, "Mesh loaded");
+});
+
+reflectionImageBtn?.addEventListener("click", () => {
+  reflectionImageInput?.click();
+});
+
+reflectionImageInput?.addEventListener("change", (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  loadReflectionImageEnvFromFile(file);
 });
 
 function setControlValue(input, value) {
@@ -3032,7 +3527,6 @@ function applyNucleusPreset(name) {
 function markNucleusPresetCustom() {
   if (materialControls.nucleusPreset !== "custom") {
     materialControls.nucleusPreset = "custom";
-    setControlValue(nucleusPresetInput, "custom");
   }
 }
 
@@ -3041,11 +3535,6 @@ shapeSelect.addEventListener("change", applyPresetFromSelect);
 sphereColorInput.addEventListener("input", (e) => {
   materialControls.color = e.target.value;
   applyMaterialControls();
-});
-showParticlesInput?.addEventListener("change", (e) => {
-  particlesVisible = e.target.checked;
-  syncParticleVisibility();
-  setStatus(particlesVisible ? "Particles visible." : "Particles hidden.");
 });
 showImportedSurfaceInput?.addEventListener("change", (e) => {
   importedSurfaceVisible = e.target.checked;
@@ -3057,21 +3546,6 @@ internalColorInput?.addEventListener("input", (e) => {
   materialControls.internalColor = e.target.value;
   applyMaterialControls();
 });
-nucleusPresetInput?.addEventListener("change", (e) => {
-  applyNucleusPreset(e.target.value || "custom");
-});
-nucleusShapeInput?.addEventListener("change", (e) => {
-  materialControls.nucleusShape = e.target.value || "sphere";
-  updateNucleusControlSections(materialControls.nucleusShape);
-  markNucleusPresetCustom();
-  syncNucleusMesh();
-  applyMaterialControls();
-});
-nucleusSizeInput?.addEventListener("input", (e) => {
-  materialControls.nucleusSize = Number(e.target.value);
-  markNucleusPresetCustom();
-  syncNucleusMesh();
-});
 nucleusCornerRadiusInput?.addEventListener("input", (e) => {
   materialControls.nucleusCornerRadius = Number(e.target.value);
   markNucleusPresetCustom();
@@ -3081,6 +3555,11 @@ nucleusYOffsetInput?.addEventListener("input", (e) => {
   materialControls.nucleusYOffset = Number(e.target.value);
   markNucleusPresetCustom();
   if (nucleusMesh) nucleusMesh.position.y = materialControls.nucleusYOffset;
+  importSurfaceGroup.position.y = materialControls.nucleusYOffset;
+});
+lightDistanceInput?.addEventListener("input", (e) => {
+  materialControls.lightDistance = Number(e.target.value);
+  setStatus(`Light distance: ${materialControls.lightDistance.toFixed(2)}`);
 });
 nucleusColorInput?.addEventListener("input", (e) => {
   materialControls.nucleusColor = e.target.value;
@@ -3169,6 +3648,16 @@ nucleusReflectTintInput?.addEventListener("input", (e) => {
 });
 nucleusReflectTintMixInput?.addEventListener("input", (e) => {
   materialControls.nucleusReflectTintMix = Number(e.target.value);
+  markNucleusPresetCustom();
+  applyMaterialControls();
+});
+surfaceChromaInput?.addEventListener("input", (e) => {
+  materialControls.surfaceChroma = Number(e.target.value);
+  markNucleusPresetCustom();
+  applyMaterialControls();
+});
+reflectionStrengthInput?.addEventListener("input", (e) => {
+  materialControls.reflectionStrength = Number(e.target.value);
   markNucleusPresetCustom();
   applyMaterialControls();
 });
@@ -3298,6 +3787,10 @@ particleLightingInput?.addEventListener("change", () => {
   applyMaterialControls();
 });
 sphereShadowsInput?.addEventListener("change", applyMaterialControls);
+shadowContrastInput?.addEventListener("input", (e) => {
+  materialControls.shadowContrast = Number(e.target.value);
+  applyMaterialControls();
+});
 
 sphereOpacityInput.addEventListener("input", (e) => {
   materialControls.opacity = Number(e.target.value);
@@ -3357,283 +3850,6 @@ async function rebuildImportedPointsForCurrentSelection(nextCount) {
   }
 }
 
-async function applyCountSliders() {
-  externalCount = Number(externalCountInput?.value) || 0;
-  internalCount = Number(internalCountInput?.value) || 0;
-  const nextCount = Math.max(0, externalCount + internalCount);
-  const requestId = ++resampleRequestId;
-  rebuildSpheres(nextCount);
-  await rebuildImportedPointsForCurrentSelection(nextCount);
-  if (requestId !== resampleRequestId) return;
-  applyPresetFromSelect();
-  setStatus(`Counts: ext ${externalCount}, int ${internalCount} (total ${nextCount})`);
-}
-
-externalCountInput?.addEventListener("input", applyCountSliders);
-internalCountInput?.addEventListener("input", applyCountSliders);
-
-function applyMovementMode() {
-  movementMode = movementModeInput?.value || "normal";
-  internalMovementMode = internalMovementInput?.value || "normal";
-  if (movementMode === "alternate-lines" || movementMode === "grid-travel" || movementMode === "face-cover") {
-    movementMode = "normal";
-    if (movementModeInput) movementModeInput.value = "normal";
-  }
-  if (movementMode === "one-way") {
-    movementMode = "tornado";
-    if (movementModeInput) movementModeInput.value = "tornado";
-  }
-  oneWayDirection = "right";
-  if (currentShapePoints.length) rebuildOneWayLanes(currentShapePoints);
-  if (currentShapePoints.length) rebuildOneWayOrbit(currentShapePoints);
-  if (currentShapePoints.length) rebuildFaceHorizontalOrbit(currentShapePoints);
-  if (currentShapePoints.length) rebuildTornadoMetrics(currentShapePoints);
-  if (movementMode === "one-way" || movementMode === "tornado" || movementMode === "face-one-way") oneWayGlobalCursor = 0;
-  const surfaceSeedOffset = surfacePointIndices.length ? ((Math.random() * surfacePointIndices.length) | 0) : 0;
-  const staticSeedOffset = staticCoverageIndices.length ? ((Math.random() * staticCoverageIndices.length) | 0) : 0;
-  const lineSeedOffset = alternateLineIds.length ? ((Math.random() * alternateLineIds.length) | 0) : 0;
-  const lineAllocation = buildWeightedBandAllocation(alternateLineIds, alternateLineBands, particles.length);
-  const lineOrder = lineAllocation.order;
-  const lineTargets = lineAllocation.targets;
-  let lineCursor = 0;
-  const lineCounters = new Map();
-  const internalTargetCount = interiorPointIndices.length ? Math.min(internalCount, particles.length) : 0;
-  let internalAssigned = 0;
-  const oneWaySeedOffset = 0;
-  const faceOneWayActive = movementMode === "face-one-way" && surfaceExternalOnly;
-  const oneWayBandIds = faceOneWayActive ? faceHorizontalOrbitBandIds : oneWayOrbitBandIds;
-  const oneWayBands = faceOneWayActive ? faceHorizontalOrbitBands : oneWayOrbitBands;
-  const oneWayExternalCount = Math.max(0, particles.length - internalTargetCount);
-  const oneWayAllocation = buildWeightedBandAllocation(oneWayBandIds, oneWayBands, oneWayExternalCount);
-  const oneWayOrder = oneWayAllocation.order;
-  const oneWayTargets = oneWayAllocation.targets;
-  let oneWayExternalCursor = 0;
-  const oneWayCounters = new Map();
-  const rowSeedOffset = gridRowIds.length ? ((Math.random() * gridRowIds.length) | 0) : 0;
-  const colSeedOffset = gridColIds.length ? ((Math.random() * gridColIds.length) | 0) : 0;
-  const rowAllocation = buildWeightedBandAllocation(gridRowIds, gridRowBands, Math.ceil(particles.length * 0.5));
-  const colAllocation = buildWeightedBandAllocation(gridColIds, gridColBands, Math.floor(particles.length * 0.5));
-  const rowOrder = rowAllocation.order;
-  const rowTargets = rowAllocation.targets;
-  const colOrder = colAllocation.order;
-  const colTargets = colAllocation.targets;
-  let rowCursor = 0;
-  let colCursor = 0;
-  const rowCounters = new Map();
-  const colCounters = new Map();
-  const normalExternalCount = Math.max(0, particles.length - internalTargetCount);
-  let normalExternalCursor = 0;
-  let normalInternalCursor = 0;
-  for (let i = 0; i < particles.length; i++) {
-    const p = particles[i];
-    const useInternal = internalAssigned < internalTargetCount && interiorPointIndices.length > 0;
-    p.isInternal = useInternal;
-    if (useInternal) internalAssigned++;
-    p.internalDepth = p.isInternal ? (0.68 + Math.random() * 0.22) : 1;
-    if (movementMode === "face-cover" && surfacePointIndices.length) {
-      if (p.isInternal) {
-        p.currentIndex = interiorPointIndices[(Math.random() * interiorPointIndices.length) | 0];
-        p.anchor.copy(currentShapePoints[p.currentIndex]);
-        p.pos.lerp(p.anchor, 0.55);
-      } else {
-      const t = Math.floor((i / Math.max(1, particles.length)) * surfacePointIndices.length);
-      p.faceSlot = (surfaceSeedOffset + t) % surfacePointIndices.length;
-      p.faceStep = (Math.random() < 0.5 ? 1 : -1) * (1 + ((Math.random() * 2) | 0));
-      p.currentIndex = surfacePointIndices[p.faceSlot];
-      p.anchor.copy(currentShapePoints[p.currentIndex]);
-      p.pos.lerp(p.anchor, 0.55);
-      }
-    } else if (movementMode === "normal") {
-      const band = p.isInternal ? normalInternalOrbitIndices : normalExternalOrbitIndices;
-      if (band && band.length) {
-        if (p.isInternal) {
-          const denom = Math.max(1, internalTargetCount);
-          const slot = Math.floor((normalInternalCursor / denom) * band.length);
-          normalInternalCursor++;
-          p.currentIndex = band[Math.max(0, Math.min(band.length - 1, slot))];
-        } else {
-          const denom = Math.max(1, normalExternalCount);
-          const slot = Math.floor((normalExternalCursor / denom) * band.length);
-          normalExternalCursor++;
-          p.currentIndex = band[Math.max(0, Math.min(band.length - 1, slot))];
-        }
-      }
-      p.normalStep = 1;
-      p.anchor.copy(currentShapePoints[p.currentIndex]);
-      if (p.isInternal) p.anchor.multiplyScalar(p.internalDepth);
-      p.pos.lerp(p.anchor, 0.55);
-    } else if (movementMode === "static-detail" && staticCoverageIndices.length) {
-      if (p.isInternal) {
-        p.currentIndex = interiorPointIndices[(Math.random() * interiorPointIndices.length) | 0];
-      } else {
-      p.staticIndex = (staticSeedOffset + i) % staticCoverageIndices.length;
-      p.currentIndex = staticCoverageIndices[p.staticIndex];
-      }
-      p.anchor.copy(currentShapePoints[p.currentIndex]);
-      if (p.isInternal) p.anchor.multiplyScalar(p.internalDepth);
-      p.pos.copy(p.anchor);
-    } else if (faceOneWayActive && !p.isInternal && oneWayBandIds.length) {
-      const bandId =
-        oneWayOrder.length
-          ? oneWayOrder[(oneWaySeedOffset + oneWayExternalCursor) % oneWayOrder.length]
-          : oneWayBandIds[(oneWaySeedOffset + i) % oneWayBandIds.length];
-      oneWayExternalCursor++;
-      p.oneWayLane = bandId;
-      const band = oneWayBands[p.oneWayLane];
-      const seen = oneWayCounters.get(p.oneWayLane) || 0;
-      oneWayCounters.set(p.oneWayLane, seen + 1);
-      const targetForBand = Math.max(1, oneWayTargets.get(p.oneWayLane) || 1);
-      p.oneWayOffset = Math.min(band.length - 1, Math.floor((seen / targetForBand) * band.length));
-      p.oneWaySlot = p.oneWayOffset;
-      p.oneWayStep = 1;
-      p.currentIndex = band[p.oneWaySlot];
-      p.anchor.copy(currentShapePoints[p.currentIndex]);
-      p.pos.lerp(p.anchor, 0.55);
-      p.segmentT = 0;
-    } else if ((movementMode === "one-way" || movementMode === "tornado") && (!p.isInternal || internalMovementMode === "match")) {
-      if (movementMode === "tornado" && !p.isInternal && oneWayOrbitBandIds.length) {
-        const bandPos = (oneWaySeedOffset + i) % oneWayOrbitBandIds.length;
-        p.oneWayLane = oneWayOrbitBandIds[bandPos];
-        const band = oneWayOrbitBands[p.oneWayLane];
-        const seen = oneWayCounters.get(p.oneWayLane) || 0;
-        oneWayCounters.set(p.oneWayLane, seen + 1);
-        const targetForBand = Math.max(1, oneWayTargets.get(p.oneWayLane) || 1);
-        p.oneWayOffset = Math.min(band.length - 1, Math.floor((seen / targetForBand) * band.length));
-        p.oneWaySlot = p.oneWayOffset;
-        p.oneWayStep = 1;
-        p.currentIndex = band[p.oneWaySlot];
-        p.anchor.copy(currentShapePoints[p.currentIndex]);
-        if (p.isInternal) p.anchor.multiplyScalar(p.internalDepth);
-        p.pos.lerp(p.anchor, 0.55);
-        p.segmentT = 0;
-      } else if (p.isInternal && internalOrbitIndices.length) {
-        const band = internalOrbitIndices;
-        const seen = oneWayCounters.get(-1) || 0;
-        oneWayCounters.set(-1, seen + 1);
-        const targetForInternal = Math.max(1, internalTargetCount);
-        p.oneWayLane = -1;
-        p.oneWayOffset = Math.min(band.length - 1, Math.floor((seen / targetForInternal) * band.length));
-        p.oneWaySlot = p.oneWayOffset;
-        p.oneWayStep = movementMode === "tornado" ? 1 : getTravelDirectionSign();
-        p.currentIndex = band[p.oneWaySlot];
-        p.anchor.copy(currentShapePoints[p.currentIndex]);
-        p.anchor.multiplyScalar(p.internalDepth);
-        p.pos.lerp(p.anchor, 0.55);
-        p.segmentT = 0;
-      } else if (oneWayOrbitBandIds.length) {
-        const bandId =
-          oneWayOrder.length
-            ? oneWayOrder[(oneWaySeedOffset + oneWayExternalCursor) % oneWayOrder.length]
-            : oneWayOrbitBandIds[(oneWaySeedOffset + i) % oneWayOrbitBandIds.length];
-        oneWayExternalCursor++;
-        p.oneWayLane = bandId;
-        const band = oneWayOrbitBands[p.oneWayLane];
-        const seen = oneWayCounters.get(p.oneWayLane) || 0;
-        oneWayCounters.set(p.oneWayLane, seen + 1);
-        const targetForBand = Math.max(1, oneWayTargets.get(p.oneWayLane) || 1);
-        p.oneWayOffset = Math.min(band.length - 1, Math.floor((seen / targetForBand) * band.length));
-        p.oneWaySlot = p.oneWayOffset;
-        p.oneWayStep = movementMode === "tornado" ? 1 : getTravelDirectionSign();
-        p.currentIndex = band[p.oneWaySlot];
-        p.anchor.copy(currentShapePoints[p.currentIndex]);
-        p.pos.lerp(p.anchor, 0.55);
-        p.segmentT = 0;
-      }
-    } else if (movementMode === "grid-travel" && (!p.isInternal || internalMovementMode === "match") && (gridRowIds.length || gridColIds.length)) {
-      p.gridFamily = i % 2;
-      if (p.gridFamily === 0 && gridRowIds.length) {
-        const bandId =
-          rowOrder.length
-            ? rowOrder[(rowSeedOffset + rowCursor) % rowOrder.length]
-            : gridRowIds[(rowSeedOffset + i) % gridRowIds.length];
-        rowCursor++;
-        p.gridBand = bandId;
-        const band = gridRowBands[p.gridBand];
-        const seen = rowCounters.get(p.gridBand) || 0;
-        rowCounters.set(p.gridBand, seen + 1);
-        const targetForBand = Math.max(1, rowTargets.get(p.gridBand) || 1);
-        p.gridSlot = Math.min(band.length - 1, Math.floor((seen / targetForBand) * band.length));
-        p.gridStep = p.gridBand % 2 === 0 ? 1 : -1;
-        p.currentIndex = band[Math.max(0, Math.min(band.length - 1, p.gridSlot))];
-      } else if (gridColIds.length) {
-        p.gridFamily = 1;
-        const bandId =
-          colOrder.length
-            ? colOrder[(colSeedOffset + colCursor) % colOrder.length]
-            : gridColIds[(colSeedOffset + i) % gridColIds.length];
-        colCursor++;
-        p.gridBand = bandId;
-        const band = gridColBands[p.gridBand];
-        const seen = colCounters.get(p.gridBand) || 0;
-        colCounters.set(p.gridBand, seen + 1);
-        const targetForBand = Math.max(1, colTargets.get(p.gridBand) || 1);
-        p.gridSlot = Math.min(band.length - 1, Math.floor((seen / targetForBand) * band.length));
-        p.gridStep = p.gridBand % 2 === 0 ? 1 : -1;
-        p.currentIndex = band[Math.max(0, Math.min(band.length - 1, p.gridSlot))];
-      }
-      p.anchor.copy(currentShapePoints[p.currentIndex]);
-      if (p.isInternal) p.anchor.multiplyScalar(p.internalDepth);
-      p.pos.lerp(p.anchor, 0.55);
-    } else if (movementMode === "alternate-lines" && (!p.isInternal || internalMovementMode === "match") && alternateLineIds.length) {
-      const bandId =
-        lineOrder.length
-          ? lineOrder[(lineSeedOffset + lineCursor) % lineOrder.length]
-          : alternateLineIds[(lineSeedOffset + i) % alternateLineIds.length];
-      lineCursor++;
-      p.lineBand = bandId;
-      const band = alternateLineBands[p.lineBand];
-      const seen = lineCounters.get(p.lineBand) || 0;
-      lineCounters.set(p.lineBand, seen + 1);
-      const targetForBand = Math.max(1, lineTargets.get(p.lineBand) || 1);
-      p.lineSlot = Math.min(band.length - 1, Math.floor((seen / targetForBand) * band.length));
-      p.lineStep = p.lineBand % 2 === 0 ? 1 : -1;
-      p.currentIndex = band[Math.max(0, Math.min(band.length - 1, p.lineSlot))];
-      p.anchor.copy(currentShapePoints[p.currentIndex]);
-      if (p.isInternal) p.anchor.multiplyScalar(p.internalDepth);
-      p.pos.lerp(p.anchor, 0.55);
-    }
-    if (!p.isInternal && surfaceExternalOnly && surfacePointIndices.length) {
-      p.currentIndex = ensureSurfaceIndex(p.currentIndex, p.currentIndex);
-      p.anchor.copy(currentShapePoints[p.currentIndex]);
-      p.pos.lerp(p.anchor, 0.55);
-    }
-    p.prevIndex = -1;
-    p.radialDir = (Math.random() * 4) | 0;
-    p.nextIndex = chooseNextIndex(p);
-    p.sepVel.set(0, 0, 0);
-    randomParticleMotion(p);
-  }
-  const modeLabel =
-    movementMode === "face-cover"
-      ? "Face Cover"
-      : movementMode === "radial-4"
-        ? "Radial 4-Way"
-        : movementMode === "face-one-way"
-          ? (surfaceExternalOnly ? "Face One-Way Horizontal" : "Face One-Way (enable Face Only)")
-        : movementMode === "one-way"
-          ? `One Way (${oneWayDirection})`
-          : movementMode === "tornado"
-            ? "Tornado"
-          : movementMode === "alternate-lines"
-            ? "Alternate Lines"
-            : movementMode === "static-detail"
-              ? "Static Detail"
-            : movementMode === "grid-travel"
-              ? "Grid Travel"
-              : movementMode === "football-pattern"
-                ? "Football Pattern"
-                : movementMode === "basketball-pattern"
-                ? "Basketball Pattern"
-            : "Normal";
-  const innerLabel =
-    internalMovementMode === "match"
-      ? "Match Outer"
-      : internalMovementMode === "static"
-        ? "Static"
-        : "Normal";
-  setStatus(`Movement mode: ${modeLabel} | Inner: ${innerLabel}`);
-}
-
 function round4(n) {
   return Number(n.toFixed(4));
 }
@@ -3647,6 +3863,43 @@ function buildExportSnapshot() {
     dst.push([round4(p.pos.x), round4(p.pos.y), round4(p.pos.z)]);
   }
 
+  // Fallback for exports when runtime particle arrays are empty.
+  // This keeps CodePen/Webflow previews visible by sampling current shape points.
+  if (external.length === 0 && internal.length === 0 && currentShapePoints.length > 0) {
+    const maxExportPoints = 2800;
+    const step = Math.max(1, Math.ceil(currentShapePoints.length / maxExportPoints));
+    for (let i = 0; i < currentShapePoints.length; i += step) {
+      const p = currentShapePoints[i];
+      external.push([round4(p.x), round4(p.y), round4(p.z)]);
+    }
+  }
+  if (external.length === 0 && internal.length === 0 && customMeshPoints?.length) {
+    const maxExportPoints = 2800;
+    const step = Math.max(1, Math.ceil(customMeshPoints.length / maxExportPoints));
+    for (let i = 0; i < customMeshPoints.length; i += step) {
+      const p = customMeshPoints[i];
+      external.push([round4(p.x), round4(p.y), round4(p.z)]);
+    }
+  }
+  if (external.length === 0 && internal.length === 0 && customImagePoints?.length) {
+    const maxExportPoints = 2800;
+    const step = Math.max(1, Math.ceil(customImagePoints.length / maxExportPoints));
+    for (let i = 0; i < customImagePoints.length; i += step) {
+      const p = customImagePoints[i];
+      external.push([round4(p.x), round4(p.y), round4(p.z)]);
+    }
+  }
+  if (external.length === 0 && internal.length === 0) {
+    const n = 1200;
+    const ga = Math.PI * (3 - Math.sqrt(5));
+    for (let i = 0; i < n; i++) {
+      const y = 1 - (i / Math.max(1, n - 1)) * 2;
+      const r = Math.sqrt(Math.max(0, 1 - y * y));
+      const t = i * ga;
+      external.push([round4(Math.cos(t) * r * 4.2), round4(y * 4.2), round4(Math.sin(t) * r * 4.2)]);
+    }
+  }
+
   return {
     version: 1,
     createdAt: new Date().toISOString(),
@@ -3656,8 +3909,8 @@ function buildExportSnapshot() {
       movementMode
     },
     render: {
-      externalSize: round4(motionControls.externalSize),
-      internalSize: round4(motionControls.internalSize),
+      externalSize: round4(FIXED_EXTERNAL_SIZE),
+      internalSize: round4(FIXED_INTERNAL_SIZE),
       externalColor: materialControls.color,
       internalColor: materialControls.internalColor,
       nucleusPreset: materialControls.nucleusPreset || "custom",
@@ -3665,6 +3918,7 @@ function buildExportSnapshot() {
       nucleusCornerRadius: round4(materialControls.nucleusCornerRadius ?? 0),
       nucleusSize: round4(materialControls.nucleusSize),
       nucleusYOffset: round4(materialControls.nucleusYOffset),
+      lightDistance: round4(materialControls.lightDistance ?? 1),
       nucleusColor: materialControls.nucleusColor,
       nucleusOpacity: round4(materialControls.nucleusOpacity),
       nucleusTransmission: round4(materialControls.nucleusTransmission ?? 0),
@@ -3680,6 +3934,8 @@ function buildExportSnapshot() {
       nucleusEnvIntensity: round4(materialControls.nucleusEnvIntensity ?? 0),
       nucleusReflectTint: materialControls.nucleusReflectTint || "#a8d8ff",
       nucleusReflectTintMix: round4(materialControls.nucleusReflectTintMix ?? 0),
+      surfaceChroma: round4(materialControls.surfaceChroma ?? 0),
+      reflectionStrength: round4(materialControls.reflectionStrength ?? 1.8),
       nucleusRimStrength: round4(materialControls.nucleusRimStrength ?? 0),
       nucleusRimPower: round4(materialControls.nucleusRimPower ?? 0),
       nucleusRimColor: materialControls.nucleusRimColor || "#cfe3ff",
@@ -3706,7 +3962,7 @@ function buildExportSnapshot() {
       nucleusBloomStrength: round4(materialControls.nucleusBloomStrength ?? 0),
       nucleusBloomRadius: round4(materialControls.nucleusBloomRadius ?? 0),
       nucleusBloomThreshold: round4(materialControls.nucleusBloomThreshold ?? 0),
-      innerWarp: round4(motionControls.innerWarp ?? 0),
+      shadowContrast: round4(materialControls.shadowContrast ?? 1),
       opacity: round4(materialControls.opacity)
     },
     points: { external, internal }
@@ -3738,39 +3994,72 @@ function buildWebflowEmbedHtml(payload) {
 </head>
 <body>
   <div id="shape-object"></div>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.min.js"></script>
   <script>
   (() => {
     const payload = ${payloadText};
-    const container = document.getElementById("shape-object");
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 120);
-    camera.position.set(0, 0, 18);
+    function ensureContainer() {
+      let el = document.getElementById("shape-object");
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "shape-object";
+        el.style.width = "100vw";
+        el.style.height = "100vh";
+        el.style.margin = "0";
+        document.body.style.margin = "0";
+        document.body.appendChild(el);
+      }
+      return el;
+    }
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-    container.appendChild(renderer.domElement);
+    function start() {
+      const container = ensureContainer();
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(55, 1, 0.001, 220);
+      camera.position.set(0, 0, 18);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.28));
-    const topLight = new THREE.DirectionalLight(0xffffff, 2.2);
-    topLight.position.set(0, 16, 0);
-    scene.add(topLight);
-    const keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
-    keyLight.position.set(7, 9, 6);
-    scene.add(keyLight);
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+      if ("outputColorSpace" in renderer && THREE.SRGBColorSpace) {
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+      } else if ("outputEncoding" in renderer && THREE.sRGBEncoding) {
+        renderer.outputEncoding = THREE.sRGBEncoding;
+      }
+      renderer.toneMapping = THREE.ACESFilmicToneMapping || THREE.NoToneMapping;
+      renderer.toneMappingExposure = 1.04;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer.domElement);
 
-    const group = new THREE.Group();
-    scene.add(group);
-    const geo = new THREE.SphereGeometry(0.1, 14, 12);
+      const lightDistance = Math.max(0.4, Math.min(6, Number(payload.render.lightDistance ?? 1)));
+      const topLight = new THREE.SpotLight(0xffffff, 4.1, 0, Math.PI * 0.24, 0.42, 1.35);
+      topLight.position.set(4.2, 17.5, 8.3);
+      topLight.target.position.set(0, 0, 0);
+      topLight.castShadow = true;
+      topLight.shadow.mapSize.set(1024, 1024);
+      topLight.shadow.bias = -0.00008;
+      topLight.shadow.normalBias = 0.016;
+      topLight.shadow.radius = 5;
+      topLight.shadow.camera.near = 0.5;
+      topLight.shadow.camera.far = 80;
+      scene.add(topLight);
+      scene.add(topLight.target);
+      scene.add(new THREE.HemisphereLight(0xe8f3ff, 0x2a3546, 0.52));
+      const rimLight = new THREE.PointLight(0xaec6ff, 0.42, 36, 2);
+      rimLight.position.set(-4.5, 7.8, -8.4);
+      scene.add(rimLight);
 
-    const extMat = new THREE.MeshStandardMaterial({
+      const group = new THREE.Group();
+      scene.add(group);
+      const geo = new THREE.SphereGeometry(0.1, 14, 12);
+
+      const extMat = new THREE.MeshStandardMaterial({
       color: payload.render.externalColor,
       transparent: payload.render.opacity < 0.999,
       opacity: payload.render.opacity,
       roughness: 0.62,
       metalness: 0.12
     });
-    const intMat = new THREE.MeshStandardMaterial({
+      const intMat = new THREE.MeshStandardMaterial({
       color: payload.render.internalColor,
       transparent: payload.render.opacity < 0.999,
       opacity: payload.render.opacity,
@@ -3778,43 +4067,72 @@ function buildWebflowEmbedHtml(payload) {
       metalness: 0.12
     });
 
-    function buildInstances(points, material, scale) {
-      const mesh = new THREE.InstancedMesh(geo, material, Math.max(1, points.length));
-      const dummy = new THREE.Object3D();
-      for (let i = 0; i < points.length; i++) {
-        const p = points[i];
-        dummy.position.set(p[0], p[1], p[2]);
-        dummy.scale.setScalar(scale);
-        dummy.updateMatrix();
-        mesh.setMatrixAt(i, dummy.matrix);
+      function buildInstances(points, material, scale) {
+        const mesh = new THREE.InstancedMesh(geo, material, Math.max(1, points.length));
+        const dummy = new THREE.Object3D();
+        for (let i = 0; i < points.length; i++) {
+          const p = points[i];
+          dummy.position.set(p[0], p[1], p[2]);
+          dummy.scale.setScalar(scale);
+          dummy.updateMatrix();
+          mesh.setMatrixAt(i, dummy.matrix);
+        }
+        mesh.count = points.length;
+        mesh.instanceMatrix.needsUpdate = true;
+        mesh.castShadow = true;
+        mesh.receiveShadow = false;
+        return mesh;
       }
-      mesh.count = points.length;
-      mesh.instanceMatrix.needsUpdate = true;
-      return mesh;
-    }
 
-    group.add(buildInstances(payload.points.external, extMat, payload.render.externalSize || 1));
-    group.add(buildInstances(payload.points.internal, intMat, payload.render.internalSize || 1));
+      group.add(buildInstances(payload.points.external, extMat, payload.render.externalSize || 1));
+      group.add(buildInstances(payload.points.internal, intMat, payload.render.internalSize || 1));
 
-    function onResize() {
-      const w = container.clientWidth || window.innerWidth;
-      const h = container.clientHeight || window.innerHeight;
-      camera.aspect = w / Math.max(1, h);
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h, false);
-    }
-    onResize();
-    window.addEventListener("resize", onResize);
+      function onResize() {
+        const w = container.clientWidth || window.innerWidth;
+        const h = container.clientHeight || window.innerHeight;
+        camera.aspect = w / Math.max(1, h);
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h, false);
+      }
+      onResize();
+      window.addEventListener("resize", onResize);
 
-    function animate(t) {
-      const s = t * 0.001;
-      group.rotation.y = s * 0.16;
-      group.rotation.x = Math.sin(s * 0.3) * 0.05;
-      group.rotation.z = Math.sin(s * 0.22) * 0.03;
-      renderer.render(scene, camera);
+      function animate(t) {
+        const s = t * 0.001;
+        const nearMix = 1 - ((lightDistance - 0.4) / (6 - 0.4));
+        topLight.position.set(
+          THREE.MathUtils.lerp(9.2, 1.8, nearMix),
+          6.8 + 7.6 * lightDistance,
+          5.0 + 5.8 * lightDistance
+        );
+        topLight.intensity = THREE.MathUtils.lerp(1.1, 3.8, nearMix);
+        topLight.penumbra = THREE.MathUtils.lerp(0.3, 0.55, nearMix);
+        topLight.angle = THREE.MathUtils.lerp(Math.PI * 0.2, Math.PI * 0.28, nearMix);
+        topLight.target.position.set(0, Number(payload.render.nucleusYOffset || 0), 0);
+        rimLight.position.set(-4.4 - 1.2 * lightDistance, 6.4, -7.1 - 0.9 * lightDistance);
+
+        group.rotation.y = s * 0.16;
+        renderer.render(scene, camera);
+        requestAnimationFrame(animate);
+      }
       requestAnimationFrame(animate);
     }
-    requestAnimationFrame(animate);
+
+    function loadThreeAndStart() {
+      if (window.THREE) {
+        try { start(); } catch (err) { console.error("Shape embed failed:", err); }
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.min.js";
+      script.onload = () => {
+        try { start(); } catch (err) { console.error("Shape embed failed:", err); }
+      };
+      script.onerror = () => console.error("Could not load three.js.");
+      document.head.appendChild(script);
+    }
+
+    loadThreeAndStart();
   })();
   </script>
 </body>
@@ -3838,6 +4156,19 @@ function exportWebflowEmbed() {
 
 exportDataBtn?.addEventListener("click", exportSnapshotJson);
 exportWebflowBtn?.addEventListener("click", exportWebflowEmbed);
+saveStartupBtn?.addEventListener("click", () => {
+  try {
+    localStorage.setItem(STARTUP_CONFIG_KEY, JSON.stringify(buildStartupConfig()));
+    setStatus("Saved current settings as startup defaults.");
+  } catch (err) {
+    console.error(err);
+    setStatus("Could not save startup defaults.", true);
+  }
+});
+clearStartupBtn?.addEventListener("click", () => {
+  localStorage.removeItem(STARTUP_CONFIG_KEY);
+  setStatus("Cleared startup defaults.");
+});
 
 function retuneAllParticles() {
   readMotionControls();
@@ -3847,50 +4178,14 @@ function retuneAllParticles() {
 }
 
 travelSpeedInput?.addEventListener("input", retuneAllParticles);
-turbulenceInput?.addEventListener("input", readMotionControls);
-turbulenceRippleInput?.addEventListener("input", readMotionControls);
-rippleCountInput?.addEventListener("input", readMotionControls);
-rippleSizeInput?.addEventListener("input", readMotionControls);
-tornadoBatchRingsInput?.addEventListener("input", readMotionControls);
-tornadoBatchOffsetInput?.addEventListener("input", readMotionControls);
-tornadoSkewInput?.addEventListener("input", readMotionControls);
-tornadoImperfectionInput?.addEventListener("input", readMotionControls);
-externalSizeInput?.addEventListener("input", readMotionControls);
-internalSpeedInput?.addEventListener("input", retuneAllParticles);
-internalSizeInput?.addEventListener("input", readMotionControls);
-innerWarpInput?.addEventListener("input", readMotionControls);
-sphereGapInput?.addEventListener("input", readMotionControls);
-cursorSizeInput?.addEventListener("input", readMotionControls);
-cursorForceInput?.addEventListener("input", readMotionControls);
-cursorLinkDistanceInput?.addEventListener("input", readMotionControls);
-cursorLineColorInput?.addEventListener("input", () => {
-  cursorLinkMaterial.color.set(cursorLineColorInput.value);
-});
-gridColorInput?.addEventListener("input", () => {
-  applyGridLineColor();
-  if (gridEnabled && currentShapePoints.length) applyPresetFromSelect();
-});
-faceMinTravelInput?.addEventListener("input", () => {
-  faceMinTravel = Number(faceMinTravelInput.value) || faceMinTravel;
-  if (currentShapePoints.length) rebuildFaceHorizontalOrbit(currentShapePoints);
-  if (movementMode === "face-one-way") applyMovementMode();
-});
 collisionEnabledInput?.addEventListener("change", () => {
   collisionEnabled = collisionEnabledInput.checked;
   setStatus(collisionEnabled ? "Collision enabled." : "Collision disabled.");
 });
-movementModeInput?.addEventListener("change", applyMovementMode);
-internalMovementInput?.addEventListener("change", applyMovementMode);
-gridEnabledInput?.addEventListener("change", applyGridToggle);
 shapeScaleInput?.addEventListener("input", () => {
   shapeScale = Number(shapeScaleInput.value) || 1;
   applyPresetFromSelect();
   setStatus(`Shape scale: ${shapeScale.toFixed(2)}x`);
-});
-surfaceExternalOnlyInput?.addEventListener("change", () => {
-  surfaceExternalOnly = surfaceExternalOnlyInput.checked;
-  applyMovementMode();
-  setStatus(surfaceExternalOnly ? "Face-only mapping enabled for external spheres." : "Face-only mapping disabled.");
 });
 
 const clock = new THREE.Clock();
@@ -3898,24 +4193,17 @@ const tempPointA = new THREE.Vector3();
 const tempPointB = new THREE.Vector3();
 const tempPointC = new THREE.Vector3();
 const tempShadowCenter = new THREE.Vector3();
+const tempLabelDir = new THREE.Vector3();
 const axisX = new THREE.Vector3(1, 0, 0);
 const axisY = new THREE.Vector3(0, 1, 0);
 const axisZ = new THREE.Vector3(0, 0, 1);
-const tempProjected = new THREE.Vector3();
-const tempCamRight = new THREE.Vector3();
-const tempCamUp = new THREE.Vector3();
-const tempWorldPush = new THREE.Vector3();
 const tempSeparate = new THREE.Vector3();
 const tempClampOffset = new THREE.Vector3();
-const tempCursorWorld = new THREE.Vector3();
-const tempCursorLocal = new THREE.Vector3();
-const tempCameraForward = new THREE.Vector3();
-const cursorRaycaster = new THREE.Raycaster();
-const cursorPlane = new THREE.Plane();
 const separationGrid = new Map();
+const autoRotateStepQ = new THREE.Quaternion();
 
 function enforceParticleSeparation(dt = 1, strength = 1) {
-  const minParticleDistance = Math.max(0.02, motionControls.sphereGap || 0.19);
+  const minParticleDistance = Math.max(0.02, FIXED_SPHERE_GAP);
   const minParticleDistanceSq = minParticleDistance * minParticleDistance;
   const separationCellSize = minParticleDistance * 1.35;
   const sepStrength = Math.max(0.05, Math.min(1.5, strength));
@@ -3988,79 +4276,27 @@ function enforceParticleSeparation(dt = 1, strength = 1) {
   }
 }
 
-function clearCursorLinks() {
-  cursorLinkGeometry.setDrawRange(0, 0);
-}
-
-function updateCursorLinks(hasCursor) {
-  if (!hasCursor || !particles.length) {
-    clearCursorLinks();
-    return;
-  }
-
-  group.getWorldPosition(tempShadowCenter);
-  camera.getWorldDirection(tempCameraForward);
-  cursorPlane.setFromNormalAndCoplanarPoint(tempCameraForward, tempShadowCenter);
-  cursorRaycaster.setFromCamera(pointerNdc, camera);
-  if (!cursorRaycaster.ray.intersectPlane(cursorPlane, tempCursorWorld)) {
-    clearCursorLinks();
-    return;
-  }
-
-  tempCursorLocal.copy(tempCursorWorld);
-  group.worldToLocal(tempCursorLocal);
-
-  const maxDist = Math.max(0.001, motionControls.cursorLinkDistance);
-  const maxDistSq = maxDist * maxDist;
-  const bestDist = [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY];
-  const bestIdx = [-1, -1, -1];
-
-  for (let i = 0; i < particles.length; i++) {
-    const d = tempCursorLocal.distanceToSquared(particles[i].pos);
-    if (d > maxDistSq) continue;
-    if (d >= bestDist[maxCursorLinks - 1]) continue;
-    for (let k = 0; k < maxCursorLinks; k++) {
-      if (d < bestDist[k]) {
-        for (let s = maxCursorLinks - 1; s > k; s--) {
-          bestDist[s] = bestDist[s - 1];
-          bestIdx[s] = bestIdx[s - 1];
-        }
-        bestDist[k] = d;
-        bestIdx[k] = i;
-        break;
-      }
-    }
-  }
-
-  let lineCount = 0;
-  for (let i = 0; i < maxCursorLinks; i++) {
-    const idx = bestIdx[i];
-    if (idx < 0) continue;
-    const p = particles[idx].pos;
-    const base = lineCount * 6;
-    cursorLinkPositions[base + 0] = tempCursorLocal.x;
-    cursorLinkPositions[base + 1] = tempCursorLocal.y;
-    cursorLinkPositions[base + 2] = tempCursorLocal.z;
-    cursorLinkPositions[base + 3] = p.x;
-    cursorLinkPositions[base + 4] = p.y;
-    cursorLinkPositions[base + 5] = p.z;
-    lineCount++;
-  }
-
-  cursorLinkGeometry.attributes.position.needsUpdate = true;
-  cursorLinkGeometry.setDrawRange(0, lineCount * 2);
+function updateContactShadowPlane() {
+  if (!contactShadowPlane.visible || contactShadowPlane.material.opacity <= 0) return;
+  contactShadowFrame = (contactShadowFrame + 1) % 6;
+  if (contactShadowFrame !== 0) return;
+  contactShadowBounds.setFromObject(group);
+  if (contactShadowBounds.isEmpty()) return;
+  contactShadowBounds.getCenter(contactShadowCenter);
+  contactShadowBounds.getSize(contactShadowSize);
+  const halfSpan = Math.max(contactShadowSize.x, contactShadowSize.z) * 0.5;
+  const planeSize = THREE.MathUtils.clamp(halfSpan * 2.2, 8, 34);
+  contactShadowPlane.scale.set(planeSize, planeSize, 1);
+  contactShadowPlane.position.set(
+    contactShadowCenter.x,
+    contactShadowBounds.min.y - 0.04,
+    contactShadowCenter.z
+  );
 }
 
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.1);
   const elapsed = clock.elapsedTime;
-  const hasCursor2D = cursorActive && Math.abs(pointerNdc.x) <= 1.2 && Math.abs(pointerNdc.y) <= 1.2;
-  pointerMotionEnergy = Math.max(0, pointerMotionEnergy - dt * 3.2);
-  const cursorRepelGate = hasCursor2D
-    ? THREE.MathUtils.smoothstep(pointerMotionEnergy, 0.02, 0.22)
-    : 0;
-  const repelRadiusNdc = 0.09 + motionControls.cursorSize * 0.095;
-  const repelStrength = motionControls.cursorForce * 2.2;
   const maxOutlineOffset = 0.34;
   const faceOneWayActive = movementMode === "face-one-way" && surfaceExternalOnly;
   const oneWayBandIds = faceOneWayActive ? faceHorizontalOrbitBandIds : oneWayOrbitBandIds;
@@ -4086,33 +4322,12 @@ function animate() {
     }
   }
   group.getWorldPosition(tempShadowCenter);
+  if (rotationTestLabel) {
+    tempLabelDir.copy(tempShadowCenter).sub(camera.position).normalize();
+    rotationTestLabel.position.copy(tempShadowCenter).addScaledVector(tempLabelDir, 9.5);
+  }
   sharedShadowCenter.value.copy(tempShadowCenter);
   sharedShadowLightDir.value.copy(topLight.position).sub(tempShadowCenter).normalize();
-
-  if (hasCursor2D) {
-    tempCamRight.setFromMatrixColumn(camera.matrixWorld, 0).normalize();
-    tempCamUp.setFromMatrixColumn(camera.matrixWorld, 1).normalize();
-  }
-
-  const applyCursorDisplacement = (p) => {
-    if (!hasCursor2D || cursorRepelGate <= 0.0001) return;
-    tempProjected.copy(p.pos).project(camera);
-    const dx = tempProjected.x - pointerNdc.x;
-    const dy = tempProjected.y - pointerNdc.y;
-    const d = Math.sqrt(dx * dx + dy * dy);
-    if (d >= repelRadiusNdc) return;
-    const falloff = 1 - d / repelRadiusNdc;
-    p.cursorTear = Math.max(p.cursorTear, Math.min(1.8, falloff * 1.8));
-    if (d > 0.0001) {
-      const nx = dx / d;
-      const ny = dy / d;
-      tempWorldPush.copy(tempCamRight).multiplyScalar(nx).addScaledVector(tempCamUp, ny);
-    } else {
-      tempWorldPush.copy(tempCamRight);
-    }
-    const cursorScale = p.isInternal ? 0.95 : 1.7;
-    p.pos.addScaledVector(tempWorldPush, falloff * falloff * repelStrength * cursorScale * cursorRepelGate);
-  };
 
   for (let i = 0; i < particles.length; i++) {
     const p = particles[i];
@@ -4136,7 +4351,6 @@ function animate() {
       p.currentIndex = staticCoverageIndices[p.staticIndex % staticCoverageIndices.length];
       p.anchor.copy(currentShapePoints[p.currentIndex]);
       p.pos.copy(p.anchor);
-      applyCursorDisplacement(p);
       continue;
     }
 
@@ -4215,14 +4429,14 @@ function animate() {
             const normalizedBandFactor = tornadoBaseCircumference / Math.max(0.0001, bandCircumference);
             let phaseOffset = 0;
             if (movementMode === "tornado" && !faceOneWayActive && !p.isInternal) {
-              const batchSize = Math.max(1, Math.floor(motionControls.tornadoBatchRings || 1));
+              const batchSize = Math.max(1, Math.floor(FIXED_TORNADO_BATCH_RINGS));
               const batchId = Math.floor((p.oneWayLane || 0) / batchSize);
-              phaseOffset += batchId * (motionControls.tornadoBatchOffset || 0);
+              phaseOffset += batchId * FIXED_TORNADO_BATCH_OFFSET;
 
               const yCenter = oneWayOrbitBandYCenters[p.oneWayLane] ?? 0;
               const ySpan = Math.max(0.0001, oneWayOrbitYMax - oneWayOrbitYMin);
               const yNorm = (yCenter - oneWayOrbitYMin) / ySpan;
-              phaseOffset += (yNorm - 0.5) * (motionControls.tornadoSkew || 0);
+              phaseOffset += (yNorm - 0.5) * FIXED_TORNADO_SKEW;
             }
             const signedPhase =
               basePhase +
@@ -4260,7 +4474,7 @@ function animate() {
               const macroSigned = (macro - 0.5) * 2;
               const mediumSigned = (medium - 0.5) * 2;
               const spike = Math.max(0, (spikeField - 0.78) / 0.22);
-              const imperfection = Math.max(0, motionControls.tornadoImperfection ?? 1);
+              const imperfection = Math.max(0, FIXED_TORNADO_IMPERFECTION);
               const dentAmount =
                 (macroSigned * (0.06 + p.tornadoBowAmp * 0.9) +
                 mediumSigned * (0.02 + p.tornadoShearAmp * 0.55) +
@@ -4297,7 +4511,7 @@ function animate() {
       } else {
         p.turnTimer -= dt;
         if (p.turnTimer <= 0) {
-          const internalMul = p.isInternal ? motionControls.internalSpeed : 1;
+          const internalMul = p.isInternal ? FIXED_INTERNAL_SPEED : 1;
           p.pathSpeed = (0.08 + motionControls.travelSpeed * 0.018) * internalMul;
           p.turnTimer = 0.16;
         }
@@ -4369,108 +4583,21 @@ function animate() {
       if (p.isInternal) p.anchor.multiplyScalar(p.internalDepth);
     }
 
-    if (motionControls.turbulence > 0.0001 || motionControls.turbulenceRipple > 0.0001) {
-      // Area-based radial ripples only: avoids local directional jitter/clumping.
-      tempPointB.copy(p.anchor);
-      if (tempPointB.lengthSq() > 0.000001) {
-        tempPointA.copy(tempPointB).normalize(); // radial dir
-        tempPointB.normalize(); // normalized surface direction for ripple distance checks
-
-        const layerMul = p.isInternal ? 0.8 : 1;
-        const modeMul = movementMode === "tornado" ? 1.4 : 1;
-        const randomRippleCount = Math.max(0, Math.min(24, Math.floor(motionControls.rippleCount || 0)));
-        const randomRippleSize = Math.max(0.2, motionControls.rippleSize || 1);
-        const lifeRate = 0.14 + motionControls.turbulenceRipple * 0.06 + motionControls.turbulence * 0.02;
-        const lifeCursor = elapsed * lifeRate;
-        const baseRadius = 0.2 + randomRippleSize * 0.32;
-        const cosRadius = Math.cos(baseRadius);
-        let rippleDisp = 0;
-
-        for (let k = 0; k < randomRippleCount; k++) {
-          const life = lifeCursor + k * 0.618;
-          const epoch = Math.floor(life);
-          const lifeT = life - epoch;
-          const envelope = Math.sin(lifeT * Math.PI) ** 2; // appear -> peak -> return
-
-          tempSeparate.copy(seedUnitVector(epoch * 37.71 + k * 11.13, k * 5.77 + 2.31));
-          const dot = THREE.MathUtils.clamp(tempPointB.dot(tempSeparate), -1, 1);
-          if (dot <= cosRadius) continue;
-
-          const proximity = (dot - cosRadius) / Math.max(0.00001, 1 - cosRadius);
-          const edge = proximity * proximity * (3 - 2 * proximity);
-          const sign = hash2(epoch * 91.73 + k * 4.17, 6.13) > 0.5 ? 1 : -1;
-
-          const waveCycles = 1.8 + randomRippleSize * 1.4;
-          const wavePhase = (1 - proximity) * Math.PI * waveCycles - lifeT * Math.PI * 2.2;
-          rippleDisp += sign * Math.sin(wavePhase) * edge * envelope;
-        }
-
-        const amp =
-          (motionControls.turbulence * 0.018 + motionControls.turbulenceRipple * 0.016) *
-          modeMul *
-          layerMul;
-        p.anchor.addScaledVector(tempPointA, THREE.MathUtils.clamp(rippleDisp * amp, -0.42, 0.42));
-      }
-    }
-    if (p.isInternal && motionControls.innerWarp > 0.0001) {
-      tempPointB.copy(p.anchor);
-      if (tempPointB.lengthSq() > 0.000001) {
-        tempPointA.copy(tempPointB).normalize();
-        const noiseX = tempPointB.x * 0.72 + p.turbulenceSeedA * 6.1;
-        const noiseY = tempPointB.y * 0.72 + p.turbulenceSeedB * 6.1;
-        const noiseZ = tempPointB.z * 0.72 + p.turbulenceSeedC * 6.1;
-        const phase = elapsed * (0.42 + motionControls.travelSpeed * 0.015);
-        const waveA = noise2D(noiseX + phase * 0.95, noiseY - phase * 0.7);
-        const waveB = noise2D(noiseZ - phase * 0.72, noiseX + phase * 0.66);
-        const signedWarp = ((waveA - 0.5) * 2) * 0.62 + ((waveB - 0.5) * 2) * 0.38;
-        const depthMul = 0.35 + (1 - p.internalDepth) * 0.95;
-        const warpAmp = motionControls.innerWarp * 0.11 * depthMul;
-        p.anchor.addScaledVector(tempPointA, THREE.MathUtils.clamp(signedWarp * warpAmp, -0.38, 0.38));
-      }
-    }
-
     if ((movementMode === "tornado" || faceOneWayActive) && particleOneWayMode) {
-      // Preserve phase lock, but use the same cursor-tear recovery path as other modes.
-      if (p.cursorTear > 0.01) {
-        const recoveryScale = p.isInternal ? 0.55 : 0.16;
-        p.pos.lerp(p.anchor, Math.min(1, p.followRate * recoveryScale * dt));
-      } else {
-        const baseFollow = p.isInternal ? 18 : 14;
-        p.pos.lerp(p.anchor, Math.min(1, baseFollow * dt));
-      }
+      const baseFollow = p.isInternal ? 18 : 14;
+      p.pos.lerp(p.anchor, Math.min(1, baseFollow * dt));
     } else {
-      const recoveryScale = p.cursorTear > 0.01
-        ? (p.isInternal ? 0.55 : 0.16)
-        : (p.isInternal ? 1.15 : 1);
+      const recoveryScale = p.isInternal ? 1.15 : 1;
       p.pos.lerp(p.anchor, Math.min(1, p.followRate * recoveryScale * dt));
     }
-    p.cursorTear = Math.max(0, p.cursorTear - dt * (p.isInternal ? 0.92 : 0.38));
-
-    applyCursorDisplacement(p);
 
   }
 
   if (nucleusMesh && nucleusMesh.visible) {
     tempPointA.set(0, materialControls.nucleusYOffset, 0);
-    nucleusMesh.position.lerp(tempPointA, Math.min(1, dt * 4.6));
-    if (hasCursor2D && cursorRepelGate > 0.0001) {
-      tempProjected.copy(nucleusMesh.position).project(camera);
-      const dx = tempProjected.x - pointerNdc.x;
-      const dy = tempProjected.y - pointerNdc.y;
-      const d = Math.sqrt(dx * dx + dy * dy);
-      const nucleusRepelRadius = 0.11 + motionControls.cursorSize * 0.07;
-      if (d < nucleusRepelRadius) {
-        const falloff = 1 - d / nucleusRepelRadius;
-        if (d > 0.0001) {
-          const nx = dx / d;
-          const ny = dy / d;
-          tempWorldPush.copy(tempCamRight).multiplyScalar(nx).addScaledVector(tempCamUp, ny);
-        } else {
-          tempWorldPush.copy(tempCamRight);
-        }
-        const nucleusRepelStrength = (0.22 + motionControls.cursorForce * 0.075) * (materialControls.nucleusSize * 0.35);
-        nucleusMesh.position.addScaledVector(tempWorldPush, falloff * falloff * nucleusRepelStrength * cursorRepelGate);
-      }
+    nucleusMesh.position.lerp(tempPointA, Math.min(1, dt * 8.0));
+    if (Math.abs(nucleusMesh.position.y - tempPointA.y) < 0.0005) {
+      nucleusMesh.position.y = tempPointA.y;
     }
     const pulseAmount = Math.max(0, materialControls.nucleusPulseAmount ?? 0);
     const pulseSpeed = Math.max(0, materialControls.nucleusPulseSpeed ?? 1.2);
@@ -4485,9 +4612,9 @@ function animate() {
     if (nucleusMesh.userData.shape === "crystal-orb" || nucleusMesh.userData.shape === "liquid-core") {
       applyLiquidOrbDeform(nucleusMesh, elapsed, -1, nucleusShellMeshes.length);
     }
-    const spinX = materialControls.nucleusSpinX ?? 0;
-    const spinY = materialControls.nucleusSpinY ?? 0;
-    const spinZ = materialControls.nucleusSpinZ ?? 0;
+    const spinX = nucleusSpinXInput ? (materialControls.nucleusSpinX ?? 0) : 0;
+    const spinY = nucleusSpinYInput ? (materialControls.nucleusSpinY ?? 0) : 0;
+    const spinZ = nucleusSpinZInput ? (materialControls.nucleusSpinZ ?? 0) : 0;
     nucleusMesh.rotation.x += spinX * dt;
     nucleusMesh.rotation.y += spinY * dt;
     nucleusMesh.rotation.z += spinZ * dt;
@@ -4561,46 +4688,116 @@ function animate() {
     const offsetLen = tempClampOffset.length();
     const dynamicOffset =
       movementMode === "face-cover"
-        ? 0.02 + p.cursorTear * 0.04
+        ? 0.02
         : movementMode === "static-detail"
-          ? 0.015 + p.cursorTear * 0.22
+          ? 0.015
           : movementMode === "tornado"
-            ? 0.045 + p.cursorTear * 0.32
+            ? 0.045
             : movementMode === "one-way"
-              ? 0.045 + p.cursorTear * 0.3
-          : maxOutlineOffset + p.cursorTear * (2.2 + motionControls.cursorSize * 1.1);
+              ? 0.045
+          : maxOutlineOffset;
     if (offsetLen > dynamicOffset) {
       p.pos.copy(p.anchor).addScaledVector(tempClampOffset, dynamicOffset / offsetLen);
     }
   }
 
-  updateCursorLinks(hasCursor2D);
-
   const t = clock.elapsedTime;
-  sweepLightA.position.set(Math.cos(t * 0.62) * 13, 5 + Math.sin(t * 0.41) * 2.4, Math.sin(t * 0.62) * 13);
-  sweepLightB.position.set(Math.cos(t * -0.5) * 11, -4 + Math.sin(t * 0.33) * 2.2, Math.sin(t * -0.5) * 11);
+  const lightTargetY = materialControls.nucleusYOffset || 0;
+  const lightDistance = THREE.MathUtils.clamp(materialControls.lightDistance ?? 1, 0.4, 6);
+  const lightNearMix = 1 - ((lightDistance - 0.4) / (6 - 0.4));
+  // Key spotlight: distance now changes both incidence angle and subject brightness.
+  topLight.position.set(
+    THREE.MathUtils.lerp(9.2, 1.8, lightNearMix),
+    6.8 + 7.6 * lightDistance,
+    5.0 + 5.8 * lightDistance
+  );
+  topLight.intensity = THREE.MathUtils.lerp(1.1, 3.8, lightNearMix);
+  topLight.penumbra = THREE.MathUtils.lerp(0.3, 0.55, lightNearMix);
+  topLight.angle = THREE.MathUtils.lerp(Math.PI * 0.2, Math.PI * 0.28, lightNearMix);
+  topLight.target.position.set(0, lightTargetY, 0);
+  rimLight.position.set(
+    -4.4 - 1.2 * lightDistance,
+    6.4,
+    -7.1 - 0.9 * lightDistance
+  );
+  if (reflectionSceneryGroup.userData?.domeMaterial?.uniforms?.uTime) {
+    reflectionSceneryGroup.userData.domeMaterial.uniforms.uTime.value = t;
+  }
+  reflectionSceneryGroup.rotation.y = 0;
+  reflectionSceneryGroup.position.y = 0;
   writeInstances(t);
 
-  if (movementMode === "one-way" || movementMode === "tornado" || faceOneWayActive) {
-    group.rotation.set(0, 0, 0);
-  } else {
-    group.rotation.y += dt * 0.16;
-    group.rotation.x = Math.sin(t * 0.3) * 0.05;
-    group.rotation.z = Math.sin(t * 0.22) * 0.03;
-  }
+  autoRotateStepQ.setFromAxisAngle(axisY, dt * 0.16);
+  group.quaternion.multiply(autoRotateStepQ);
   group.position.set(0, 0, 0);
+  updateContactShadowPlane();
   updateNucleusDynamicEnv();
+  updateImportedSurfaceDynamicEnv();
 
   controls.update();
   composer.render();
   requestAnimationFrame(animate);
 }
 
+function applyLoadedStartupSceneState() {
+  const sceneState = loadedStartupSceneState;
+  if (!sceneState || typeof sceneState !== "object") return;
+  const camPos = Array.isArray(sceneState.cameraPosition) ? sceneState.cameraPosition : null;
+  if (camPos && camPos.length === 3 && camPos.every((n) => Number.isFinite(Number(n)))) {
+    camera.position.set(Number(camPos[0]), Number(camPos[1]), Number(camPos[2]));
+  }
+  const target = Array.isArray(sceneState.controlsTarget) ? sceneState.controlsTarget : null;
+  if (target && target.length === 3 && target.every((n) => Number.isFinite(Number(n)))) {
+    controls.target.set(Number(target[0]), Number(target[1]), Number(target[2]));
+  }
+  const zoom = Number(sceneState.cameraZoom);
+  if (Number.isFinite(zoom) && zoom > 0) {
+    camera.zoom = zoom;
+    camera.updateProjectionMatrix();
+  }
+  const rot = Array.isArray(sceneState.groupRotation) ? sceneState.groupRotation : null;
+  if (rot && rot.length === 3 && rot.every((n) => Number.isFinite(Number(n)))) {
+    group.rotation.set(Number(rot[0]), Number(rot[1]), Number(rot[2]));
+  }
+  forceApplyNucleusYOffset();
+  controls.update();
+}
+
 rebuildSpheres(sphereCount);
 applyMaterialControls();
 updateNucleusControlSections(materialControls.nucleusShape);
-applyPresetFromSelect();
-animate();
+
+async function bootScene() {
+  let startupReflectionLoaded = await loadReflectionImageEnvFromUrl(DEFAULT_REFLECTION_IMAGE_URL, "Startup reflection");
+  if (!startupReflectionLoaded) {
+    startupReflectionLoaded = await loadReflectionImageEnvFromUrl("./citrus_orchard_road_puresky_1k.exr", "Startup reflection");
+  }
+  let startupMeshLoaded = await loadCustomMeshFromUrl(
+    DEFAULT_STARTUP_MESH_URL,
+    DEFAULT_STARTUP_MESH_FILENAME,
+    "Startup mesh loaded"
+  );
+  if (!startupMeshLoaded) {
+    startupMeshLoaded = await loadCustomMeshFromUrl("./flower.glb", DEFAULT_STARTUP_MESH_FILENAME, "Startup mesh loaded");
+  }
+  if (!startupMeshLoaded && shapeSelect.value === "custom-mesh") {
+    shapeSelect.value = "sphere";
+  }
+  applyPresetFromSelect();
+  forceApplyNucleusYOffset();
+  applyLoadedStartupSceneState();
+  forceApplyNucleusYOffset();
+  if (startupReflectionLoaded && startupMeshLoaded) {
+    setStatus("Startup assets loaded (EXR + flower), scene state restored.");
+  } else if (startupReflectionLoaded) {
+    setStatus("Startup reflection loaded; startup mesh failed.");
+  } else if (startupMeshLoaded) {
+    setStatus("Startup mesh loaded; startup reflection failed.");
+  }
+  animate();
+}
+
+bootScene();
 
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;

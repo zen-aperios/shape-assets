@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { GLTFLoader } from "../../node_modules/three/examples/jsm/loaders/GLTFLoader.js";
-import { OBJLoader } from "../../node_modules/three/examples/jsm/loaders/OBJLoader.js";
-import { DRACOLoader } from "../../node_modules/three/examples/jsm/loaders/DRACOLoader.js";
-import { MeshSurfaceSampler } from "../../node_modules/three/examples/jsm/math/MeshSurfaceSampler.js";
-import * as MeshoptDecoder from "../../node_modules/three/examples/jsm/libs/meshopt_decoder.module.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
+import { MeshSurfaceSampler } from "three/examples/jsm/math/MeshSurfaceSampler.js";
+import * as MeshoptDecoder from "three/examples/jsm/libs/meshopt_decoder.module.js";
 
 function randomRange(min, max) {
   return min + Math.random() * (max - min);
@@ -338,7 +338,7 @@ async function loadNormalizedMeshRoot(file, shapeRadius) {
   const gltfLoader = new GLTFLoader();
   const objLoader = new OBJLoader();
   const dracoLoader = new DRACOLoader();
-  dracoLoader.setDecoderPath("../../node_modules/three/examples/jsm/libs/draco/");
+  dracoLoader.setDecoderPath("https://unpkg.com/three@0.161.0/examples/jsm/libs/draco/");
   gltfLoader.setDRACOLoader(dracoLoader);
   gltfLoader.setMeshoptDecoder(MeshoptDecoder);
 
