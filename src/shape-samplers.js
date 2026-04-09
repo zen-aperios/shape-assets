@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/loaders/GLTFLoader.js";
-import { OBJLoader } from "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/loaders/OBJLoader.js";
-import { DRACOLoader } from "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/loaders/DRACOLoader.js";
-import { MeshSurfaceSampler } from "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/math/MeshSurfaceSampler.js";
-import * as MeshoptDecoder from "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/libs/meshopt_decoder.module.js";
+import { GLTFLoader } from "../../node_modules/three/examples/jsm/loaders/GLTFLoader.js";
+import { OBJLoader } from "../../node_modules/three/examples/jsm/loaders/OBJLoader.js";
+import { DRACOLoader } from "../../node_modules/three/examples/jsm/loaders/DRACOLoader.js";
+import { MeshSurfaceSampler } from "../../node_modules/three/examples/jsm/math/MeshSurfaceSampler.js";
+import * as MeshoptDecoder from "../../node_modules/three/examples/jsm/libs/meshopt_decoder.module.js";
 
 function randomRange(min, max) {
   return min + Math.random() * (max - min);
@@ -333,12 +333,12 @@ function samplePointsFromSamplers(samplers, targetCount) {
   return points;
 }
 
-export async function buildPointsFromMeshFile(file, targetCount, shapeRadius) {
+async function loadNormalizedMeshRoot(file, shapeRadius) {
   const extension = file.name.toLowerCase().split(".").pop();
   const gltfLoader = new GLTFLoader();
   const objLoader = new OBJLoader();
   const dracoLoader = new DRACOLoader();
-  dracoLoader.setDecoderPath("https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/libs/draco/");
+  dracoLoader.setDecoderPath("../../node_modules/three/examples/jsm/libs/draco/");
   gltfLoader.setDRACOLoader(dracoLoader);
   gltfLoader.setMeshoptDecoder(MeshoptDecoder);
 
@@ -379,18 +379,7 @@ export async function buildPointsFromMeshFile(file, targetCount, shapeRadius) {
     const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
     root.position.sub(scaledCenter);
 
-    const samplers = buildSamplersFromObject(root);
-    if (!samplers.length) {
-      throw new Error("No mesh surfaces found in that file.");
-    }
-
-    const points = samplePointsFromSamplers(samplers, targetCount);
-
-    for (const item of samplers) {
-      item.geometry.dispose();
-    }
-
-    return points;
+    return root;
   } catch (err) {
     const msg = String(err?.message || err);
     if (msg.includes("KHR_draco_mesh_compression")) {
@@ -403,4 +392,25 @@ export async function buildPointsFromMeshFile(file, targetCount, shapeRadius) {
   } finally {
     dracoLoader.dispose();
   }
+}
+
+export async function buildMeshAssetFromFile(file, targetCount, shapeRadius) {
+  const root = await loadNormalizedMeshRoot(file, shapeRadius);
+  const samplers = buildSamplersFromObject(root);
+  if (!samplers.length) {
+    throw new Error("No mesh surfaces found in that file.");
+  }
+
+  const points = samplePointsFromSamplers(samplers, targetCount);
+
+  for (const item of samplers) {
+    item.geometry.dispose();
+  }
+
+  return { points, root };
+}
+
+export async function buildPointsFromMeshFile(file, targetCount, shapeRadius) {
+  const { points } = await buildMeshAssetFromFile(file, targetCount, shapeRadius);
+  return points;
 }

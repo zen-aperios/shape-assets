@@ -65,7 +65,7 @@ html, body {
 .panel {
   margin-top: 10px;
   display: grid;
-  grid-template-columns: 74px 1fr;
+  grid-template-columns: 108px 1fr;
   gap: 6px 8px;
   align-items: center;
 }
@@ -77,6 +77,37 @@ html, body {
 
 .panel input[type="range"] {
   width: 100%;
+}
+
+.panel input[type="color"],
+.panel input[type="text"],
+.panel select {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 8px;
+  border: 1px solid rgba(154, 176, 237, 0.35);
+  background: rgba(15, 19, 31, 0.9);
+  color: #e9eefb;
+  font-size: 12px;
+  padding: 6px 8px;
+}
+
+.panel-sep {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(150, 174, 235, 0.26);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9db5f2;
+}
+
+.panel-sep.control-hidden,
+.panel label.control-hidden,
+.panel input.control-hidden,
+.panel select.control-hidden {
+  display: none;
 }
 
 .status {
