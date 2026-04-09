@@ -133,7 +133,7 @@ function clearImportedSurface() {
 }
 
 function syncImportedSurfaceMaterials() {
-  const baseMaterial = getNucleusRenderMaterial();
+  const baseMaterial = nucleusMaterial;
   const applySourceMaterial = (mesh, source, forceDoubleSide = false) => {
     const current = mesh.material;
     const sameType = current && current.constructor === source.constructor;
@@ -148,11 +148,7 @@ function syncImportedSurfaceMaterials() {
   };
   importSurfaceGroup.traverse((child) => {
     if (!child.isMesh) return;
-    if (child.userData.surfaceRole === "shell") {
-      applySourceMaterial(child, nucleusShellMaterial, false);
-    } else {
-      applySourceMaterial(child, baseMaterial, true);
-    }
+    applySourceMaterial(child, baseMaterial, true);
   });
 }
 
@@ -169,7 +165,6 @@ function buildImportedSurface(root) {
     return;
   }
 
-  const shellCount = (materialControls.nucleusShellMode ? Math.max(0, Math.floor(materialControls.nucleusShellLayers || 0)) : 0);
   root.updateWorldMatrix(true, true);
   const meshPos = new THREE.Vector3();
   const meshQuat = new THREE.Quaternion();
@@ -177,7 +172,7 @@ function buildImportedSurface(root) {
   root.traverse((child) => {
     if (!child.isMesh || !child.geometry) return;
     child.matrixWorld.decompose(meshPos, meshQuat, meshScale);
-    const baseMesh = new THREE.Mesh(markLiquidGeometry(child.geometry.clone()), getNucleusRenderMaterial().clone());
+    const baseMesh = new THREE.Mesh(markLiquidGeometry(child.geometry.clone()), nucleusMaterial.clone());
     baseMesh.material.side = THREE.DoubleSide;
     baseMesh.position.copy(meshPos);
     baseMesh.quaternion.copy(meshQuat);
@@ -187,17 +182,6 @@ function buildImportedSurface(root) {
     baseMesh.userData.surfaceRole = "base";
     importSurfaceGroup.add(baseMesh);
 
-    for (let i = 0; i < shellCount; i++) {
-      const shell = new THREE.Mesh(markLiquidGeometry(child.geometry.clone()), nucleusShellMaterial.clone());
-      shell.position.copy(meshPos);
-      shell.quaternion.copy(meshQuat);
-      const shrink = Math.max(0.08, 1 - materialControls.nucleusShellThickness * (i + 1));
-      shell.scale.copy(meshScale).multiplyScalar(shrink);
-      shell.castShadow = false;
-      shell.receiveShadow = false;
-      shell.userData.surfaceRole = "shell";
-      importSurfaceGroup.add(shell);
-    }
   });
 
   syncImportedSurfaceMaterials();
@@ -369,7 +353,7 @@ let sphereCount = Math.max(0, externalCount + internalCount);
 const baseShapeRadius = 5.7;
 let shapeScale = Number(shapeScaleInput?.value) || 1;
 let surfaceExternalOnly = surfaceExternalOnlyInput?.checked ?? false;
-let particlesVisible = true;
+let particlesVisible = showParticlesInput?.checked ?? false;
 let importedSurfaceVisible = showImportedSurfaceInput?.checked ?? true;
 
 const particleGeometry = new THREE.SphereGeometry(0.1, 20, 16);
