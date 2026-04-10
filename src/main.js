@@ -310,16 +310,6 @@ if (!loadedUserStartup) applySnapshotDefaultsToInputs(DEFAULT_STARTUP_SNAPSHOT);
 
 const FIXED_EXTERNAL_SIZE = 1;
 const FIXED_INTERNAL_SIZE = 0.9;
-const FIXED_INTERNAL_SPEED = 0.8;
-const FIXED_SPHERE_GAP = 0.19;
-const FIXED_TORNADO_BATCH_RINGS = 3;
-const FIXED_TORNADO_BATCH_OFFSET = 0.04;
-const FIXED_TORNADO_SKEW = 0;
-const FIXED_TORNADO_IMPERFECTION = 1;
-const FIXED_MOVEMENT_MODE = "normal";
-const FIXED_INTERNAL_MOVEMENT_MODE = "normal";
-const FIXED_SURFACE_EXTERNAL_ONLY = false;
-const FIXED_FACE_MIN_TRAVEL = 18;
 const FIXED_NUCLEUS_SHAPE = "sphere";
 const FIXED_NUCLEUS_PRESET = "custom";
 const FIXED_NUCLEUS_SIZE = 1.1;
@@ -2111,9 +2101,6 @@ function round4(n) {
 }
 
 function buildExportSnapshot() {
-  const external = [];
-  const internal = [];
-
   const viewportWidth = Math.max(
     1,
     Math.round(renderer?.domElement?.clientWidth || container?.clientWidth || window.innerWidth || 1)
@@ -2202,8 +2189,7 @@ function buildExportSnapshot() {
       height: viewportHeight,
       pixelRatio: round4(Math.min(window.devicePixelRatio || 1, 1.5)),
       lockSize: true
-    },
-    points: { external, internal }
+    }
   };
 }
 
@@ -2351,8 +2337,6 @@ html, body {
     <input id="nucleusBloomStrength" type="hidden" value="0.7" />
     <input id="nucleusBloomRadius" type="hidden" value="0.35" />
     <input id="nucleusBloomThreshold" type="hidden" value="0.75" />
-    <input id="internalDetailShading" type="hidden" value="true" />
-    <input id="particleLighting" type="hidden" value="true" />
     <input id="sphereShadows" type="hidden" value="true" />
     <label for="shadowContrast">Shadow Contrast</label>
     <input id="shadowContrast" type="range" min="0" max="2.5" step="0.01" value="1" />
