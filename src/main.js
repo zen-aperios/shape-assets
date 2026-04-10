@@ -30,7 +30,6 @@ const {
   reflectionImageBtn,
   reflectionImageInput,
   shapeScaleInput,
-  collisionEnabledInput,
   travelSpeedInput,
   showImportedSurfaceInput,
   sphereColorInput,
@@ -84,8 +83,6 @@ const {
   nucleusBloomStrengthInput,
   nucleusBloomRadiusInput,
   nucleusBloomThresholdInput,
-  internalDetailShadingInput,
-  particleLightingInput,
   sphereShadowsInput,
   shadowContrastInput,
   sphereOpacityInput,
@@ -776,35 +773,6 @@ let particlesVisible = false;
 let importedSurfaceVisible = true;
 if (showImportedSurfaceInput) showImportedSurfaceInput.checked = true;
 
-const particleGeometry = new THREE.SphereGeometry(0.1, 20, 16);
-const externalParticleMaterial = new THREE.MeshStandardMaterial({
-  color: 0x90b2ff,
-  roughness: 0.62,
-  metalness: 0.12,
-  emissive: 0x000000,
-  emissiveIntensity: 0.06,
-  transparent: true,
-  opacity: 0.95
-});
-const internalParticleMaterial = new THREE.MeshStandardMaterial({
-  color: 0x4f6fb6,
-  roughness: 0.62,
-  metalness: 0.12,
-  emissive: 0x000000,
-  emissiveIntensity: 0.06,
-  transparent: true,
-  opacity: 0.95
-});
-const externalParticleBasicMaterial = new THREE.MeshBasicMaterial({
-  color: 0x90b2ff,
-  transparent: true,
-  opacity: 0.95
-});
-const internalParticleBasicMaterial = new THREE.MeshBasicMaterial({
-  color: 0x4f6fb6,
-  transparent: true,
-  opacity: 0.95
-});
 const nucleusMaterial = new THREE.MeshPhysicalMaterial({
   color: 0xa8d8ff,
   roughness: 0.08,
@@ -921,18 +889,6 @@ void main() {
 let nucleusNoiseTexture = null;
 const sharedShadowLightDir = { value: new THREE.Vector3(0, 1, 0) };
 const sharedShadowCenter = { value: new THREE.Vector3(0, 0, 0) };
-const externalShadowUniforms = {
-  uSharedLightDir: sharedShadowLightDir,
-  uSharedCenter: sharedShadowCenter,
-  uSharedShadowStrength: { value: 0.5 },
-  uSharedShadowSoftness: { value: 0.2 }
-};
-const internalShadowUniforms = {
-  uSharedLightDir: sharedShadowLightDir,
-  uSharedCenter: sharedShadowCenter,
-  uSharedShadowStrength: { value: 0.5 },
-  uSharedShadowSoftness: { value: 0.2 }
-};
 const nucleusShadowUniforms = {
   uSharedLightDir: sharedShadowLightDir,
   uSharedCenter: sharedShadowCenter,
@@ -1005,8 +961,6 @@ gl_FragColor.rgb *= sharedShade;
   material.customProgramCacheKey = () => "shared-shadow-v1";
   material.needsUpdate = true;
 }
-enableSharedShadow(externalParticleMaterial, externalShadowUniforms);
-enableSharedShadow(internalParticleMaterial, internalShadowUniforms);
 enableSharedShadow(nucleusMaterial, nucleusShadowUniforms);
 enableSharedShadow(importedSurfaceMaterial, importedShadowUniforms);
 
@@ -1072,34 +1026,9 @@ const materialControls = {
   internalMatte: 0.45,
   glow: 0.35
 };
-let particleLightingEnabled = particleLightingInput?.checked ?? true;
-
-function getExternalRenderMaterial() {
-  return particleLightingEnabled ? externalParticleMaterial : externalParticleBasicMaterial;
-}
-
-function getInternalRenderMaterial() {
-  return particleLightingEnabled ? internalParticleMaterial : internalParticleBasicMaterial;
-}
 
 function getNucleusRenderMaterial() {
-  return particleLightingEnabled ? nucleusMaterial : nucleusBasicMaterial;
-}
-
-function applyParticleLightingMode(skipStatus = false) {
-  particleLightingEnabled = particleLightingInput?.checked ?? true;
-  if (externalParticleMesh) externalParticleMesh.material = getExternalRenderMaterial();
-  if (internalParticleMesh) internalParticleMesh.material = getInternalRenderMaterial();
-  if (nucleusMesh) nucleusMesh.material = getNucleusRenderMaterial();
-  syncImportedSurfaceMaterials();
-  if (!skipStatus) {
-    setStatus(particleLightingEnabled ? "Particle lighting enabled." : "Particle lighting disabled (unlit particles).");
-  }
-}
-
-function syncParticleVisibility() {
-  if (externalParticleMesh) externalParticleMesh.visible = particlesVisible;
-  if (internalParticleMesh) internalParticleMesh.visible = particlesVisible;
+  return nucleusMaterial;
 }
 
 function syncNucleusMesh() {
@@ -1263,7 +1192,7 @@ function updateOrbitFocus() {
 
 function updateNucleusDynamicEnv() {
   const nucleusSupportsPanelEnv = materialControls.nucleusShape === "cube";
-  if (!particleLightingEnabled || !nucleusMesh || !nucleusMesh.visible || !nucleusSupportsPanelEnv) return;
+  if (!nucleusMesh || !nucleusMesh.visible || !nucleusSupportsPanelEnv) return;
   nucleusEnvFrame = (nucleusEnvFrame + 1) % 3;
   if (nucleusEnvFrame !== 0) return;
   const wasVisible = nucleusMesh.visible;
@@ -1470,41 +1399,19 @@ function readMotionControls() {
 }
 
 function applyMaterialControls() {
-  const internalDetails = internalDetailShadingInput?.checked ?? true;
-  const sphereShadowsEnabled = (sphereShadowsInput?.checked ?? true) && particleLightingEnabled;
+  const sphereShadowsEnabled = sphereShadowsInput?.checked ?? true;
   const shadowContrast = THREE.MathUtils.clamp(materialControls.shadowContrast ?? 1, 0, 2.5);
   contactShadowPlane.material.opacity = 0;
   const nucleusTransmission = THREE.MathUtils.clamp(materialControls.nucleusTransmission ?? 0.18, 0, 1);
   const nucleusTintMix = THREE.MathUtils.clamp(materialControls.nucleusReflectTintMix ?? 0, 0, 1);
   const finalNucleusColor = new THREE.Color(materialControls.nucleusColor);
   finalNucleusColor.lerp(new THREE.Color(materialControls.nucleusReflectTint), nucleusTintMix * (0.35 + nucleusTransmission * 0.65));
-  externalParticleMaterial.color.set(materialControls.color);
-  internalParticleMaterial.color.set(materialControls.internalColor);
   nucleusMaterial.color.copy(finalNucleusColor);
-  externalParticleBasicMaterial.color.set(materialControls.color);
-  internalParticleBasicMaterial.color.set(materialControls.internalColor);
   nucleusBasicMaterial.color.copy(finalNucleusColor);
-  externalParticleMaterial.transparent = materialControls.opacity < 0.999;
-  internalParticleMaterial.transparent = materialControls.opacity < 0.999;
   nucleusMaterial.transparent = materialControls.nucleusOpacity < 0.999;
-  externalParticleBasicMaterial.transparent = materialControls.opacity < 0.999;
-  internalParticleBasicMaterial.transparent = materialControls.opacity < 0.999;
   nucleusBasicMaterial.transparent = materialControls.nucleusOpacity < 0.999;
-  externalParticleMaterial.opacity = materialControls.opacity;
-  internalParticleMaterial.opacity = materialControls.opacity;
   nucleusMaterial.opacity = materialControls.nucleusOpacity;
-  externalParticleBasicMaterial.opacity = materialControls.opacity;
-  internalParticleBasicMaterial.opacity = materialControls.opacity;
   nucleusBasicMaterial.opacity = materialControls.nucleusOpacity;
-  const extBaseMetalness = 0.06 + materialControls.glare * 0.45;
-  const extBaseRoughness = 0.92 - materialControls.glare * 0.55;
-  const extMatte = Math.max(0, Math.min(1, materialControls.matte));
-  externalParticleMaterial.metalness = extBaseMetalness * (1 - extMatte);
-  externalParticleMaterial.roughness = extBaseRoughness * (1 - extMatte) + 1.0 * extMatte;
-  externalParticleMaterial.emissive.set(0x050505);
-  externalParticleMaterial.emissiveIntensity = 0.04 + materialControls.glow * 0.14;
-  externalShadowUniforms.uSharedShadowStrength.value = sphereShadowsEnabled ? 0.5 * shadowContrast : 0.0;
-  externalShadowUniforms.uSharedShadowSoftness.value = 0.2;
   const chromeGlare = Math.max(0, Math.min(1, materialControls.nucleusGlare));
   const nucleusMatte = Math.max(0, Math.min(1, materialControls.nucleusMatte));
   const cubePlasticBias = materialControls.nucleusShape === "cube" ? 1 : 0;
@@ -1627,33 +1534,10 @@ function applyMaterialControls() {
   bloomPass.radius = Math.max(0, Math.min(1, materialControls.nucleusBloomRadius ?? 0.35));
   bloomPass.threshold = Math.max(0, Math.min(1, materialControls.nucleusBloomThreshold ?? 0.75));
   bloomPass.enabled = !!materialControls.nucleusBloomEnabled;
-
-  if (internalDetails) {
-    const intBaseMetalness = 0.06 + materialControls.glare * 0.45;
-    const intBaseRoughness = 0.92 - materialControls.glare * 0.55;
-    const intMatte = Math.max(0, Math.min(1, materialControls.internalMatte));
-    internalParticleMaterial.metalness = intBaseMetalness * (1 - intMatte);
-    internalParticleMaterial.roughness = intBaseRoughness * (1 - intMatte) + 1.0 * intMatte;
-    internalParticleMaterial.emissive.set(0x050505);
-    internalParticleMaterial.emissiveIntensity = 0.04 + materialControls.glow * 0.14;
-    internalShadowUniforms.uSharedShadowStrength.value = sphereShadowsEnabled ? 0.5 * shadowContrast : 0.0;
-    internalShadowUniforms.uSharedShadowSoftness.value = 0.2;
-  } else {
-    internalParticleMaterial.metalness = 0.0;
-    internalParticleMaterial.roughness = 1.0;
-    internalParticleMaterial.emissive.set(0x000000);
-    internalParticleMaterial.emissiveIntensity = 0.0;
-    internalShadowUniforms.uSharedShadowStrength.value = 0.0;
-    internalShadowUniforms.uSharedShadowSoftness.value = 0.2;
-  }
-  externalParticleMaterial.needsUpdate = true;
-  internalParticleMaterial.needsUpdate = true;
   nucleusMaterial.needsUpdate = true;
   nucleusShellMaterial.needsUpdate = true;
   nucleusRimMaterial.needsUpdate = true;
   nucleusGradientMaterial.needsUpdate = true;
-  externalParticleBasicMaterial.needsUpdate = true;
-  internalParticleBasicMaterial.needsUpdate = true;
   nucleusBasicMaterial.needsUpdate = true;
 
   // Imported surface: physically-plausible glass settings.
@@ -1750,7 +1634,6 @@ function applyMaterialControls() {
   syncImportedSurfaceMaterials();
 }
 
-let particles = [];
 let currentShapePoints = [];
 let shapeBatches = [];
 let shapeNeighbors = [];
@@ -1786,8 +1669,6 @@ let normalExternalOrbitIndices = [];
 let normalInternalOrbitIndices = [];
 let normalExternalSlotMap = new Map();
 let normalInternalSlotMap = new Map();
-let externalParticleMesh = null;
-let internalParticleMesh = null;
 let nucleusMesh = null;
 let nucleusShellMeshes = [];
 let nucleusRimMesh = null;
@@ -1797,7 +1678,6 @@ const nucleusVisibleOnStartup = false;
 let movementMode = FIXED_MOVEMENT_MODE;
 let internalMovementMode = FIXED_INTERNAL_MOVEMENT_MODE;
 let oneWayDirection = "right";
-let collisionEnabled = collisionEnabledInput?.checked ?? true;
 let faceMinTravel = FIXED_FACE_MIN_TRAVEL;
 let forceAllSurfacePoints = false;
 const radialDirs = [
@@ -1806,13 +1686,6 @@ const radialDirs = [
   new THREE.Vector3(0, 1, 0),
   new THREE.Vector3(0, -1, 0)
 ];
-
-function randomParticleMotion(p) {
-  const internalMul = p.isInternal ? FIXED_INTERNAL_SPEED : 1;
-  p.pathSpeed = (0.08 + motionControls.travelSpeed * 0.018) * internalMul;
-  p.followRate = p.isInternal ? 9.8 : 8.8;
-  p.turnTimer = 0.16;
-}
 
 function computeOrbitMetrics(indices, points) {
   if (!indices || indices.length < 2) return { circumference: 1 };
@@ -2041,131 +1914,11 @@ function getFaceHorizontalBandForParticle(p) {
   return faceHorizontalOrbitBands[p.oneWayLane] || null;
 }
 
-const instanceDummy = new THREE.Object3D();
 const shadowTintColor = new THREE.Color(0x1e2433);
 const tempNormal = new THREE.Vector3();
 const tempLightDirKey = new THREE.Vector3();
 const tempLightDirA = new THREE.Vector3();
 const tempLightDirB = new THREE.Vector3();
-
-function writeInstances(elapsed = 0) {
-  if (!externalParticleMesh || !internalParticleMesh) return;
-  const maxExternal = Math.max(0, externalCount);
-  const maxInternal = Math.max(0, internalCount);
-  let externalIndex = 0;
-  let internalIndex = 0;
-
-  for (let i = 0; i < particles.length; i++) {
-    const p = particles[i];
-    instanceDummy.position.copy(p.pos);
-    const scale = p.isInternal ? FIXED_INTERNAL_SIZE : FIXED_EXTERNAL_SIZE;
-    instanceDummy.scale.setScalar(scale);
-    instanceDummy.updateMatrix();
-    if (p.isInternal && internalIndex < maxInternal) {
-      internalParticleMesh.setMatrixAt(internalIndex, instanceDummy.matrix);
-      internalIndex++;
-    } else if (externalIndex < maxExternal) {
-      externalParticleMesh.setMatrixAt(externalIndex, instanceDummy.matrix);
-      externalIndex++;
-    }
-  }
-  externalParticleMesh.count = externalIndex;
-  internalParticleMesh.count = internalIndex;
-  externalParticleMesh.instanceMatrix.needsUpdate = true;
-  internalParticleMesh.instanceMatrix.needsUpdate = true;
-}
-
-function fibonacciSpherePoint(i, n, r) {
-  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
-  const y = 1 - (i / (n - 1)) * 2;
-  const radius = Math.sqrt(Math.max(0, 1 - y * y));
-  const theta = i * goldenAngle;
-  return new THREE.Vector3(Math.cos(theta) * radius * r, y * r, Math.sin(theta) * radius * r);
-}
-
-function rebuildSpheres(count) {
-  if (externalParticleMesh) {
-    group.remove(externalParticleMesh);
-    externalParticleMesh.dispose();
-    externalParticleMesh = null;
-  }
-  if (internalParticleMesh) {
-    group.remove(internalParticleMesh);
-    internalParticleMesh.dispose();
-    internalParticleMesh = null;
-  }
-
-  sphereCount = count;
-  particles = [];
-
-  externalParticleMesh = new THREE.InstancedMesh(
-    particleGeometry,
-    getExternalRenderMaterial(),
-    Math.max(1, externalCount)
-  );
-  internalParticleMesh = new THREE.InstancedMesh(
-    particleGeometry,
-    getInternalRenderMaterial(),
-    Math.max(1, internalCount)
-  );
-  externalParticleMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  internalParticleMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  // Shared shadow field replaces per-particle shadow-map casting.
-  externalParticleMesh.castShadow = false;
-  internalParticleMesh.castShadow = false;
-  externalParticleMesh.receiveShadow = false;
-  internalParticleMesh.receiveShadow = false;
-  group.add(externalParticleMesh);
-  group.add(internalParticleMesh);
-  syncParticleVisibility();
-
-  for (let i = 0; i < sphereCount; i++) {
-    const p0 = fibonacciSpherePoint(i, sphereCount, baseShapeRadius);
-    const p = {
-      anchor: p0.clone(),
-      pos: p0.clone(),
-      batchId: 0,
-      currentIndex: 0,
-      prevIndex: -1,
-      nextIndex: 0,
-      segmentT: 0,
-      pathSpeed: 0,
-      followRate: 0,
-      turnTimer: 0,
-      sepVel: new THREE.Vector3(),
-      normalStep: 1,
-      radialDir: (Math.random() * 4) | 0,
-      faceSlot: 0,
-      faceStep: 1,
-      lineBand: 0,
-      lineSlot: 0,
-      lineStep: 1,
-      staticIndex: 0,
-      oneWayLane: 0,
-      oneWaySlot: 0,
-      oneWayStep: 1,
-      oneWayOffset: 0,
-      isInternal: false,
-      internalDepth: 0.8,
-      tornadoPhaseJitter: 0.92 + Math.random() * 0.16,
-      tornadoBowAmp: 0.02 + Math.random() * 0.05,
-      tornadoShearAmp: 0.01 + Math.random() * 0.035,
-      tornadoSpikeAmp: 0.015 + Math.random() * 0.06,
-      tornadoFreq: 0.7 + Math.random() * 1.4,
-      tornadoSpikeRate: 1.1 + Math.random() * 1.7,
-      tornadoPhaseOffset: Math.random() * Math.PI * 2,
-      tornadoSpikePhase: Math.random() * Math.PI * 2,
-      gridFamily: 0,
-      gridBand: 0,
-      gridSlot: 0,
-      gridStep: 1
-    };
-    randomParticleMotion(p);
-    particles.push(p);
-  }
-
-  writeInstances();
-}
 
 function buildShapeTravelData(points, forceSurface = false) {
   if (!points.length) {
@@ -3146,7 +2899,7 @@ function buildOneWayBandOrder(totalCount) {
 }
 
 function applyBasePoints(basePoints, forceSurface = false) {
-  if (!basePoints.length || particles.length === 0) return;
+  if (!basePoints.length) return;
 
   const min = new THREE.Vector3(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY);
   const max = new THREE.Vector3(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY);
@@ -3170,202 +2923,8 @@ function applyBasePoints(basePoints, forceSurface = false) {
   }
   forceAllSurfacePoints = !!forceSurface;
   buildShapeTravelData(currentShapePoints, forceAllSurfacePoints);
-  const surfaceSeedOffset = surfacePointIndices.length ? ((Math.random() * surfacePointIndices.length) | 0) : 0;
-  const staticSeedOffset = staticCoverageIndices.length ? ((Math.random() * staticCoverageIndices.length) | 0) : 0;
-  const lineSeedOffset = alternateLineIds.length ? ((Math.random() * alternateLineIds.length) | 0) : 0;
-  const lineAllocation = buildWeightedBandAllocation(alternateLineIds, alternateLineBands, particles.length);
-  const lineOrder = lineAllocation.order;
-  const lineTargets = lineAllocation.targets;
-  let lineCursor = 0;
-  const lineCounters = new Map();
-  const internalTargetCount = interiorPointIndices.length ? Math.min(internalCount, particles.length) : 0;
-  let internalAssigned = 0;
-  const oneWaySeedOffset = 0;
-  const faceOneWayActive = movementMode === "face-one-way" && surfaceExternalOnly;
-  const oneWayBandIds = faceOneWayActive ? faceHorizontalOrbitBandIds : oneWayOrbitBandIds;
-  const oneWayBands = faceOneWayActive ? faceHorizontalOrbitBands : oneWayOrbitBands;
-  const oneWayExternalCount = Math.max(0, particles.length - internalTargetCount);
-  const oneWayAllocation = buildWeightedBandAllocation(oneWayBandIds, oneWayBands, oneWayExternalCount);
-  const oneWayOrder = oneWayAllocation.order;
-  const oneWayTargets = oneWayAllocation.targets;
-  let oneWayExternalCursor = 0;
-  const oneWayCounters = new Map();
-  const rowSeedOffset = gridRowIds.length ? ((Math.random() * gridRowIds.length) | 0) : 0;
-  const colSeedOffset = gridColIds.length ? ((Math.random() * gridColIds.length) | 0) : 0;
-  const rowAllocation = buildWeightedBandAllocation(gridRowIds, gridRowBands, Math.ceil(particles.length * 0.5));
-  const colAllocation = buildWeightedBandAllocation(gridColIds, gridColBands, Math.floor(particles.length * 0.5));
-  const rowOrder = rowAllocation.order;
-  const rowTargets = rowAllocation.targets;
-  const colOrder = colAllocation.order;
-  const colTargets = colAllocation.targets;
-  let rowCursor = 0;
-  let colCursor = 0;
-  const rowCounters = new Map();
-  const colCounters = new Map();
-  const normalExternalCount = Math.max(0, particles.length - internalTargetCount);
-  let normalExternalCursor = 0;
-  let normalInternalCursor = 0;
-
-  for (let i = 0; i < particles.length; i++) {
-    const p = particles[i];
-    const useInternal = internalAssigned < internalTargetCount && interiorPointIndices.length > 0;
-    p.isInternal = useInternal;
-    if (useInternal) internalAssigned++;
-    p.internalDepth = p.isInternal ? (0.68 + Math.random() * 0.22) : 1;
-    p.batchId = i % Math.max(1, shapeBatches.length);
-    const batch = shapeBatches[p.batchId];
-    let idx = batch?.length ? batch[(Math.random() * batch.length) | 0] : ((Math.random() * currentShapePoints.length) | 0);
-    if (p.isInternal) {
-      idx = interiorPointIndices[(Math.random() * interiorPointIndices.length) | 0];
-    } else if (surfaceExternalOnly && surfacePointIndices.length) {
-      idx = pickRandomSurfaceIndex(idx);
-    }
-    if (movementMode === "face-cover" && surfacePointIndices.length) {
-      if (!p.isInternal) {
-        const t = Math.floor((i / Math.max(1, particles.length)) * surfacePointIndices.length);
-        p.faceSlot = (surfaceSeedOffset + t) % surfacePointIndices.length;
-        p.faceStep = (Math.random() < 0.5 ? 1 : -1) * (1 + ((Math.random() * 2) | 0));
-        idx = surfacePointIndices[p.faceSlot];
-      }
-    } else if (movementMode === "normal") {
-      const band = p.isInternal ? normalInternalOrbitIndices : normalExternalOrbitIndices;
-      if (band && band.length) {
-        if (p.isInternal) {
-          const denom = Math.max(1, internalTargetCount);
-          const slot = Math.floor((normalInternalCursor / denom) * band.length);
-          normalInternalCursor++;
-          idx = band[Math.max(0, Math.min(band.length - 1, slot))];
-        } else {
-          const denom = Math.max(1, normalExternalCount);
-          const slot = Math.floor((normalExternalCursor / denom) * band.length);
-          normalExternalCursor++;
-          idx = band[Math.max(0, Math.min(band.length - 1, slot))];
-        }
-      }
-      p.normalStep = 1;
-    } else if (movementMode === "static-detail" && staticCoverageIndices.length) {
-      if (!p.isInternal) {
-        p.staticIndex = (staticSeedOffset + i) % staticCoverageIndices.length;
-        idx = staticCoverageIndices[p.staticIndex];
-      }
-    } else if (faceOneWayActive && !p.isInternal && oneWayBandIds.length) {
-      const bandId =
-        oneWayOrder.length
-          ? oneWayOrder[(oneWaySeedOffset + oneWayExternalCursor) % oneWayOrder.length]
-          : oneWayBandIds[(oneWaySeedOffset + i) % oneWayBandIds.length];
-      oneWayExternalCursor++;
-      p.oneWayLane = bandId;
-      const band = oneWayBands[p.oneWayLane];
-      const seen = oneWayCounters.get(p.oneWayLane) || 0;
-      oneWayCounters.set(p.oneWayLane, seen + 1);
-      const targetForBand = Math.max(1, oneWayTargets.get(p.oneWayLane) || 1);
-      p.oneWayOffset = Math.min(band.length - 1, Math.floor((seen / targetForBand) * band.length));
-      p.oneWaySlot = p.oneWayOffset;
-      p.oneWayStep = 1;
-      idx = band[p.oneWaySlot];
-    } else if ((movementMode === "one-way" || movementMode === "tornado") && (!p.isInternal || internalMovementMode === "match")) {
-      if (movementMode === "tornado" && !p.isInternal && oneWayOrbitBandIds.length) {
-        const bandPos = (oneWaySeedOffset + i) % oneWayOrbitBandIds.length;
-        p.oneWayLane = oneWayOrbitBandIds[bandPos];
-        const band = oneWayOrbitBands[p.oneWayLane];
-        const seen = oneWayCounters.get(p.oneWayLane) || 0;
-        oneWayCounters.set(p.oneWayLane, seen + 1);
-        const targetForBand = Math.max(1, oneWayTargets.get(p.oneWayLane) || 1);
-        p.oneWayOffset = Math.min(band.length - 1, Math.floor((seen / targetForBand) * band.length));
-        p.oneWaySlot = p.oneWayOffset;
-        p.oneWayStep = 1;
-        idx = band[p.oneWaySlot];
-      } else if (p.isInternal && internalOrbitIndices.length) {
-        const band = internalOrbitIndices;
-        const seen = oneWayCounters.get(-1) || 0;
-        oneWayCounters.set(-1, seen + 1);
-        const targetForInternal = Math.max(1, internalTargetCount);
-        p.oneWayLane = -1;
-        p.oneWayOffset = Math.min(band.length - 1, Math.floor((seen / targetForInternal) * band.length));
-        p.oneWaySlot = p.oneWayOffset;
-        p.oneWayStep = movementMode === "tornado" ? 1 : getTravelDirectionSign();
-        idx = band[p.oneWaySlot];
-      } else if (oneWayOrbitBandIds.length) {
-        const bandId =
-          oneWayOrder.length
-            ? oneWayOrder[(oneWaySeedOffset + oneWayExternalCursor) % oneWayOrder.length]
-            : oneWayOrbitBandIds[(oneWaySeedOffset + i) % oneWayOrbitBandIds.length];
-        oneWayExternalCursor++;
-        p.oneWayLane = bandId;
-        const band = oneWayOrbitBands[p.oneWayLane];
-        const seen = oneWayCounters.get(p.oneWayLane) || 0;
-        oneWayCounters.set(p.oneWayLane, seen + 1);
-        const targetForBand = Math.max(1, oneWayTargets.get(p.oneWayLane) || 1);
-        p.oneWayOffset = Math.min(band.length - 1, Math.floor((seen / targetForBand) * band.length));
-        p.oneWaySlot = p.oneWayOffset;
-        p.oneWayStep = movementMode === "tornado" ? 1 : getTravelDirectionSign();
-        idx = band[p.oneWaySlot];
-      }
-    } else if (movementMode === "grid-travel" && (!p.isInternal || internalMovementMode === "match") && (gridRowIds.length || gridColIds.length)) {
-      p.gridFamily = i % 2;
-      if (p.gridFamily === 0 && gridRowIds.length) {
-        const bandId =
-          rowOrder.length
-            ? rowOrder[(rowSeedOffset + rowCursor) % rowOrder.length]
-            : gridRowIds[(rowSeedOffset + i) % gridRowIds.length];
-        rowCursor++;
-        p.gridBand = bandId;
-        const band = gridRowBands[p.gridBand];
-        const seen = rowCounters.get(p.gridBand) || 0;
-        rowCounters.set(p.gridBand, seen + 1);
-        const targetForBand = Math.max(1, rowTargets.get(p.gridBand) || 1);
-        p.gridSlot = Math.min(band.length - 1, Math.floor((seen / targetForBand) * band.length));
-        p.gridStep = p.gridBand % 2 === 0 ? 1 : -1;
-        idx = band[Math.max(0, Math.min(band.length - 1, p.gridSlot))];
-      } else if (gridColIds.length) {
-        p.gridFamily = 1;
-        const bandId =
-          colOrder.length
-            ? colOrder[(colSeedOffset + colCursor) % colOrder.length]
-            : gridColIds[(colSeedOffset + i) % gridColIds.length];
-        colCursor++;
-        p.gridBand = bandId;
-        const band = gridColBands[p.gridBand];
-        const seen = colCounters.get(p.gridBand) || 0;
-        colCounters.set(p.gridBand, seen + 1);
-        const targetForBand = Math.max(1, colTargets.get(p.gridBand) || 1);
-        p.gridSlot = Math.min(band.length - 1, Math.floor((seen / targetForBand) * band.length));
-        p.gridStep = p.gridBand % 2 === 0 ? 1 : -1;
-        idx = band[Math.max(0, Math.min(band.length - 1, p.gridSlot))];
-      }
-    } else if (movementMode === "alternate-lines" && (!p.isInternal || internalMovementMode === "match") && alternateLineIds.length) {
-      const bandId =
-        lineOrder.length
-          ? lineOrder[(lineSeedOffset + lineCursor) % lineOrder.length]
-          : alternateLineIds[(lineSeedOffset + i) % alternateLineIds.length];
-      lineCursor++;
-      p.lineBand = bandId;
-      const band = alternateLineBands[p.lineBand];
-      const seen = lineCounters.get(p.lineBand) || 0;
-      lineCounters.set(p.lineBand, seen + 1);
-      const targetForBand = Math.max(1, lineTargets.get(p.lineBand) || 1);
-      p.lineSlot = Math.min(band.length - 1, Math.floor((seen / targetForBand) * band.length));
-      p.lineStep = p.lineBand % 2 === 0 ? 1 : -1;
-      idx = band[Math.max(0, Math.min(band.length - 1, p.lineSlot))];
-    }
-    if (!p.isInternal && surfaceExternalOnly && surfacePointIndices.length) {
-      idx = ensureSurfaceIndex(idx, idx);
-    }
-    p.currentIndex = idx;
-    p.prevIndex = -1;
-    p.radialDir = (Math.random() * 4) | 0;
-    p.nextIndex = chooseNextIndex(p);
-    p.segmentT = movementMode === "one-way" || movementMode === "tornado" || faceOneWayActive ? 0 : Math.random();
-    p.anchor.copy(currentShapePoints[idx]);
-    if (p.isInternal) p.anchor.multiplyScalar(p.internalDepth);
-    p.pos.copy(p.anchor);
-    p.sepVel.set(0, 0, 0);
-    randomParticleMotion(p);
-  }
-
   group.position.set(0, 0, 0);
   controls.target.set(0, 0, 0);
-  writeInstances();
 }
 
 let customImagePoints = null;
@@ -3793,11 +3352,6 @@ nucleusBloomThresholdInput?.addEventListener("input", (e) => {
   markNucleusPresetCustom();
   applyMaterialControls();
 });
-internalDetailShadingInput?.addEventListener("change", applyMaterialControls);
-particleLightingInput?.addEventListener("change", () => {
-  applyParticleLightingMode();
-  applyMaterialControls();
-});
 sphereShadowsInput?.addEventListener("change", applyMaterialControls);
 shadowContrastInput?.addEventListener("input", (e) => {
   materialControls.shadowContrast = Number(e.target.value);
@@ -3869,48 +3423,6 @@ function round4(n) {
 function buildExportSnapshot() {
   const external = [];
   const internal = [];
-  for (let i = 0; i < particles.length; i++) {
-    const p = particles[i];
-    const dst = p.isInternal ? internal : external;
-    dst.push([round4(p.pos.x), round4(p.pos.y), round4(p.pos.z)]);
-  }
-
-  // Fallback for exports when runtime particle arrays are empty.
-  // This keeps CodePen/Webflow previews visible by sampling current shape points.
-  if (external.length === 0 && internal.length === 0 && currentShapePoints.length > 0) {
-    const maxExportPoints = 2800;
-    const step = Math.max(1, Math.ceil(currentShapePoints.length / maxExportPoints));
-    for (let i = 0; i < currentShapePoints.length; i += step) {
-      const p = currentShapePoints[i];
-      external.push([round4(p.x), round4(p.y), round4(p.z)]);
-    }
-  }
-  if (external.length === 0 && internal.length === 0 && customMeshPoints?.length) {
-    const maxExportPoints = 2800;
-    const step = Math.max(1, Math.ceil(customMeshPoints.length / maxExportPoints));
-    for (let i = 0; i < customMeshPoints.length; i += step) {
-      const p = customMeshPoints[i];
-      external.push([round4(p.x), round4(p.y), round4(p.z)]);
-    }
-  }
-  if (external.length === 0 && internal.length === 0 && customImagePoints?.length) {
-    const maxExportPoints = 2800;
-    const step = Math.max(1, Math.ceil(customImagePoints.length / maxExportPoints));
-    for (let i = 0; i < customImagePoints.length; i += step) {
-      const p = customImagePoints[i];
-      external.push([round4(p.x), round4(p.y), round4(p.z)]);
-    }
-  }
-  if (external.length === 0 && internal.length === 0) {
-    const n = 1200;
-    const ga = Math.PI * (3 - Math.sqrt(5));
-    for (let i = 0; i < n; i++) {
-      const y = 1 - (i / Math.max(1, n - 1)) * 2;
-      const r = Math.sqrt(Math.max(0, 1 - y * y));
-      const t = i * ga;
-      external.push([round4(Math.cos(t) * r * 4.2), round4(y * 4.2), round4(Math.sin(t) * r * 4.2)]);
-    }
-  }
 
   const viewportWidth = Math.max(
     1,
@@ -4069,9 +3581,7 @@ html, body {
   </div>
   <div class="panel">
     <input id="shapeScale" type="hidden" value="1" />
-    <input id="collisionEnabled" type="hidden" value="true" />
-    <label for="travelSpeed">Travel Speed</label>
-    <input id="travelSpeed" type="range" min="1" max="100" step="1" value="8" />
+    <input id="travelSpeed" type="hidden" value="8" />
     <label for="showImportedSurface">Show Imported Surface</label>
     <input id="showImportedSurface" type="checkbox" checked />
     <input id="sphereColor" type="hidden" value="#90b2ff" />
@@ -4153,24 +3663,16 @@ html, body {
     <input id="nucleusBloomStrength" type="hidden" value="0.7" />
     <input id="nucleusBloomRadius" type="hidden" value="0.35" />
     <input id="nucleusBloomThreshold" type="hidden" value="0.75" />
-    <label for="internalDetailShading">Internal Shading</label>
-    <input id="internalDetailShading" type="checkbox" checked />
-    <label for="particleLighting">Particle Lighting</label>
-    <input id="particleLighting" type="checkbox" checked />
-    <label for="sphereShadows">Sphere Shadows</label>
-    <input id="sphereShadows" type="checkbox" checked />
+    <input id="internalDetailShading" type="hidden" value="true" />
+    <input id="particleLighting" type="hidden" value="true" />
+    <input id="sphereShadows" type="hidden" value="true" />
     <label for="shadowContrast">Shadow Contrast</label>
     <input id="shadowContrast" type="range" min="0" max="2.5" step="0.01" value="1" />
-    <label for="sphereOpacity">Opacity</label>
-    <input id="sphereOpacity" type="range" min="0.05" max="1" step="0.01" value="0.95" />
-    <label for="sphereGlare">Glare</label>
-    <input id="sphereGlare" type="range" min="0" max="1" step="0.01" value="0.45" />
-    <label for="sphereMatte">Matte</label>
-    <input id="sphereMatte" type="range" min="0" max="1" step="0.01" value="0.35" />
-    <label for="internalMatte">Internal Matte</label>
-    <input id="internalMatte" type="range" min="0" max="1" step="0.01" value="0.45" />
-    <label for="sphereGlow">Glow</label>
-    <input id="sphereGlow" type="range" min="0" max="2" step="0.01" value="0.35" />
+    <input id="sphereOpacity" type="hidden" value="0.95" />
+    <input id="sphereGlare" type="hidden" value="0.45" />
+    <input id="sphereMatte" type="hidden" value="0.35" />
+    <input id="internalMatte" type="hidden" value="0.45" />
+    <input id="sphereGlow" type="hidden" value="0.35" />
   </div>
   <div id="statusLine" class="status"></div>
 </div>
@@ -4220,18 +3722,7 @@ clearStartupBtn?.addEventListener("click", () => {
   setStatus("Cleared startup defaults.");
 });
 
-function retuneAllParticles() {
-  readMotionControls();
-  for (let i = 0; i < particles.length; i++) {
-    randomParticleMotion(particles[i]);
-  }
-}
-
-travelSpeedInput?.addEventListener("input", retuneAllParticles);
-collisionEnabledInput?.addEventListener("change", () => {
-  collisionEnabled = collisionEnabledInput.checked;
-  setStatus(collisionEnabled ? "Collision enabled." : "Collision disabled.");
-});
+travelSpeedInput?.addEventListener("input", readMotionControls);
 shapeScaleInput?.addEventListener("input", () => {
   shapeScale = Number(shapeScaleInput.value) || 1;
   applyPresetFromSelect();
@@ -4247,84 +3738,7 @@ const tempLabelDir = new THREE.Vector3();
 const axisX = new THREE.Vector3(1, 0, 0);
 const axisY = new THREE.Vector3(0, 1, 0);
 const axisZ = new THREE.Vector3(0, 0, 1);
-const tempSeparate = new THREE.Vector3();
-const tempClampOffset = new THREE.Vector3();
-const separationGrid = new Map();
 const autoRotateStepQ = new THREE.Quaternion();
-
-function enforceParticleSeparation(dt = 1, strength = 1) {
-  const minParticleDistance = Math.max(0.02, FIXED_SPHERE_GAP);
-  const minParticleDistanceSq = minParticleDistance * minParticleDistance;
-  const separationCellSize = minParticleDistance * 1.35;
-  const sepStrength = Math.max(0.05, Math.min(1.5, strength));
-  const damping = 0.78;
-  const maxStep = minParticleDistance * 0.36;
-  separationGrid.clear();
-
-  for (let i = 0; i < particles.length; i++) {
-    const p = particles[i].pos;
-    const cx = Math.floor(p.x / separationCellSize);
-    const cy = Math.floor(p.y / separationCellSize);
-    const cz = Math.floor(p.z / separationCellSize);
-    const key = `${cx},${cy},${cz}`;
-    let list = separationGrid.get(key);
-    if (!list) {
-      list = [];
-      separationGrid.set(key, list);
-    }
-    list.push(i);
-  }
-
-  for (let i = 0; i < particles.length; i++) {
-    const pi = particles[i].pos;
-    const cx = Math.floor(pi.x / separationCellSize);
-    const cy = Math.floor(pi.y / separationCellSize);
-    const cz = Math.floor(pi.z / separationCellSize);
-
-    for (let ox = -1; ox <= 1; ox++) {
-      for (let oy = -1; oy <= 1; oy++) {
-        for (let oz = -1; oz <= 1; oz++) {
-          const key = `${cx + ox},${cy + oy},${cz + oz}`;
-          const list = separationGrid.get(key);
-          if (!list) continue;
-
-          for (let k = 0; k < list.length; k++) {
-            const j = list[k];
-            if (j <= i) continue;
-
-            const pj = particles[j].pos;
-            tempSeparate.copy(pi).sub(pj);
-            const distSq = tempSeparate.lengthSq();
-            if (distSq >= minParticleDistanceSq) continue;
-
-            let dist = Math.sqrt(distSq);
-            if (dist < 0.00001) {
-              tempSeparate.set(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalize();
-              dist = 0.00001;
-            } else {
-              tempSeparate.multiplyScalar(1 / dist);
-            }
-
-            const push = (minParticleDistance - dist) * 0.5 * sepStrength;
-            particles[i].sepVel.addScaledVector(tempSeparate, push);
-            particles[j].sepVel.addScaledVector(tempSeparate, -push);
-          }
-        }
-      }
-    }
-  }
-
-  for (let i = 0; i < particles.length; i++) {
-    const p = particles[i];
-    if (!p.sepVel) continue;
-    p.sepVel.multiplyScalar(Math.pow(damping, Math.max(0.5, dt * 60)));
-    const len = p.sepVel.length();
-    if (len > maxStep && len > 0.000001) {
-      p.sepVel.multiplyScalar(maxStep / len);
-    }
-    p.pos.add(p.sepVel);
-  }
-}
 
 function updateContactShadowPlane() {
   if (!contactShadowPlane.visible || contactShadowPlane.material.opacity <= 0) return;
@@ -4347,30 +3761,6 @@ function updateContactShadowPlane() {
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.1);
   const elapsed = clock.elapsedTime;
-  const maxOutlineOffset = 0.34;
-  const faceOneWayActive = movementMode === "face-one-way" && surfaceExternalOnly;
-  const oneWayBandIds = faceOneWayActive ? faceHorizontalOrbitBandIds : oneWayOrbitBandIds;
-  const oneWayBands = faceOneWayActive ? faceHorizontalOrbitBands : oneWayOrbitBands;
-  const oneWayLikeMode =
-    movementMode === "one-way" || movementMode === "tornado" || faceOneWayActive;
-  const tornadoDirectionSign = 1;
-  const oneWayFlowSpeedBase = 0.45 + motionControls.travelSpeed * 0.02;
-  // Keep tornado speed in world-units/sec stable across particle-count changes.
-  const tornadoLinearSpeedTarget = 0.36 + motionControls.travelSpeed * 0.055;
-  const tornadoPhaseSpeed = tornadoLinearSpeedTarget / Math.max(0.0001, tornadoBaseCircumference);
-  const oneWayFlowSpeed =
-    movementMode === "tornado"
-      ? tornadoPhaseSpeed
-      : faceOneWayActive
-        ? (0.05 + motionControls.travelSpeed * 0.008)
-      : oneWayFlowSpeedBase;
-  if (oneWayLikeMode) {
-    if (movementMode === "tornado" || faceOneWayActive) {
-      oneWayGlobalCursor = (elapsed * oneWayFlowSpeed) % 1000000;
-    } else {
-      oneWayGlobalCursor = (oneWayGlobalCursor + oneWayFlowSpeed * dt) % 1000000;
-    }
-  }
   group.getWorldPosition(tempShadowCenter);
   if (rotationTestLabel) {
     tempLabelDir.copy(tempShadowCenter).sub(camera.position).normalize();
@@ -4378,270 +3768,6 @@ function animate() {
   }
   sharedShadowCenter.value.copy(tempShadowCenter);
   sharedShadowLightDir.value.copy(topLight.position).sub(tempShadowCenter).normalize();
-
-  for (let i = 0; i < particles.length; i++) {
-    const p = particles[i];
-
-    const particleOneWayMode = oneWayLikeMode && (
-      (faceOneWayActive
-        ? (!p.isInternal && oneWayBandIds.length > 0)
-        : (
-          (movementMode === "tornado"
-            ? (p.isInternal
-                ? (internalMovementMode === "match" && internalOrbitIndices.length > 1)
-                : oneWayBandIds.length > 0)
-            : false) ||
-          (p.isInternal
-            ? (internalMovementMode === "match" && internalOrbitIndices.length > 1)
-            : oneWayBandIds.length > 0)
-        ))
-    );
-
-    if (movementMode === "static-detail" && staticCoverageIndices.length && !p.isInternal) {
-      p.currentIndex = staticCoverageIndices[p.staticIndex % staticCoverageIndices.length];
-      p.anchor.copy(currentShapePoints[p.currentIndex]);
-      p.pos.copy(p.anchor);
-      continue;
-    }
-
-    if (surfaceExternalOnly && !p.isInternal && surfacePointIndices.length && !surfacePointMask[p.currentIndex]) {
-      p.currentIndex = pickRandomSurfaceIndex(p.currentIndex);
-      p.prevIndex = -1;
-      p.nextIndex = faceOneWayActive ? chooseNextIndexOneWay(p) : chooseNextIndexSurfaceOnly(p);
-      p.segmentT = 0;
-      p.anchor.copy(currentShapePoints[p.currentIndex]);
-      p.pos.copy(p.anchor);
-    } else if (movementMode === "face-cover" && surfacePointIndices.length && !surfacePointMask[p.currentIndex]) {
-      p.currentIndex = surfacePointIndices[(Math.random() * surfacePointIndices.length) | 0];
-      p.prevIndex = -1;
-      p.nextIndex = chooseNextIndexFaceCover(p);
-      p.segmentT = 0;
-      p.anchor.copy(currentShapePoints[p.currentIndex]);
-      p.pos.copy(p.anchor);
-    } else if (movementMode === "alternate-lines" && alternateLineIds.length) {
-      const band = alternateLineBands[p.lineBand];
-      if (!band || band.length === 0) {
-        p.lineBand = alternateLineIds[(Math.random() * alternateLineIds.length) | 0];
-        p.lineSlot = 0;
-      }
-    } else if (particleOneWayMode) {
-      const band = faceOneWayActive && !p.isInternal ? getFaceHorizontalBandForParticle(p) : getOrbitBandForParticle(p);
-      if (!band || band.length < 2) {
-        const useExternalBand = !p.isInternal;
-        if (useExternalBand) {
-          p.oneWayLane = oneWayBandIds[(Math.random() * oneWayBandIds.length) | 0];
-          const nextBand = oneWayBands[p.oneWayLane];
-          p.oneWayOffset = Math.min(nextBand.length - 1, Math.max(0, p.oneWayOffset));
-          p.oneWaySlot = p.oneWayOffset;
-          p.oneWayStep = movementMode === "tornado" || faceOneWayActive ? 1 : getTravelDirectionSign();
-          p.currentIndex = nextBand[p.oneWaySlot];
-          p.nextIndex = nextBand[(p.oneWaySlot + p.oneWayStep + nextBand.length) % nextBand.length];
-        } else {
-          p.oneWayLane = -1;
-          const nextBand = internalOrbitIndices;
-          p.oneWayOffset = Math.min(nextBand.length - 1, Math.max(0, p.oneWayOffset));
-          p.oneWaySlot = p.oneWayOffset;
-          p.oneWayStep = movementMode === "tornado" ? 1 : getTravelDirectionSign();
-          p.currentIndex = nextBand[p.oneWaySlot];
-          p.nextIndex = nextBand[(p.oneWaySlot + p.oneWayStep + nextBand.length) % nextBand.length];
-        }
-      }
-    } else if (movementMode === "grid-travel" && (gridRowIds.length || gridColIds.length)) {
-      const bands = p.gridFamily === 0 ? gridRowBands : gridColBands;
-      const ids = p.gridFamily === 0 ? gridRowIds : gridColIds;
-      const band = bands[p.gridBand];
-      if (!band || band.length < 2) {
-        if (ids.length) {
-          p.gridBand = ids[(Math.random() * ids.length) | 0];
-          const nextBand = bands[p.gridBand];
-          p.gridSlot = (Math.random() * nextBand.length) | 0;
-          p.gridStep = p.gridBand % 2 === 0 ? 1 : -1;
-          p.currentIndex = nextBand[p.gridSlot];
-          p.nextIndex = nextBand[(p.gridSlot + p.gridStep + nextBand.length) % nextBand.length];
-        }
-      }
-    }
-
-    if (currentShapePoints.length > 1) {
-      if (particleOneWayMode) {
-        const band = faceOneWayActive && !p.isInternal ? getFaceHorizontalBandForParticle(p) : getOrbitBandForParticle(p);
-        if (band && band.length > 1) {
-          if (movementMode === "tornado" || faceOneWayActive) {
-            // Normalized phase keeps all particles at the same 360 cycle speed.
-            const n = band.length;
-            const basePhase = p.oneWayOffset / Math.max(1, n);
-            const bandArcData = faceOneWayActive && !p.isInternal
-              ? (faceHorizontalOrbitBandArcData[p.oneWayLane] || { cumulative: [0, 1], total: 1 })
-              : (p.isInternal
-                ? (internalOrbitArcData || { cumulative: [0, 1], total: 1 })
-                : (oneWayOrbitBandArcData[p.oneWayLane] || { cumulative: [0, 1], total: 1 }));
-            const bandCircumference = Math.max(0.0001, bandArcData.total || tornadoBaseCircumference);
-            const normalizedBandFactor = tornadoBaseCircumference / Math.max(0.0001, bandCircumference);
-            let phaseOffset = 0;
-            if (movementMode === "tornado" && !faceOneWayActive && !p.isInternal) {
-              const batchSize = Math.max(1, Math.floor(FIXED_TORNADO_BATCH_RINGS));
-              const batchId = Math.floor((p.oneWayLane || 0) / batchSize);
-              phaseOffset += batchId * FIXED_TORNADO_BATCH_OFFSET;
-
-              const yCenter = oneWayOrbitBandYCenters[p.oneWayLane] ?? 0;
-              const ySpan = Math.max(0.0001, oneWayOrbitYMax - oneWayOrbitYMin);
-              const yNorm = (yCenter - oneWayOrbitYMin) / ySpan;
-              phaseOffset += (yNorm - 0.5) * FIXED_TORNADO_SKEW;
-            }
-            const signedPhase =
-              basePhase +
-              oneWayGlobalCursor * normalizedBandFactor * tornadoDirectionSign +
-              phaseOffset;
-            const loopPhase = ((signedPhase % 1) + 1) % 1;
-            const sampled = sampleBandByPhase(band, bandArcData, loopPhase, p.anchor);
-            p.oneWaySlot = sampled.slot;
-            p.currentIndex = sampled.currentIndex;
-            p.nextIndex = sampled.nextIndex;
-
-            if (movementMode === "tornado" && !faceOneWayActive && !p.isInternal) {
-              // Organic clustered dents/spikes so tornado surface is imperfect, not patterned.
-              const ySpan = Math.max(0.0001, oneWayOrbitYMax - oneWayOrbitYMin);
-              const yNorm = ((oneWayOrbitBandYCenters[p.oneWayLane] ?? 0) - oneWayOrbitYMin) / ySpan;
-              const laneSeed = hash2((p.oneWayLane || 0) * 0.731, 11.913);
-
-              const macro = noise2D(
-                loopPhase * 3.2 + elapsed * (0.05 + p.tornadoFreq * 0.035) + laneSeed * 2.7,
-                yNorm * 2.4 + elapsed * 0.03
-              );
-              const medium = noise2D(
-                loopPhase * 6.9 - elapsed * (0.12 + p.tornadoFreq * 0.05) + laneSeed * 5.1,
-                yNorm * 5.2 + laneSeed * 3.7
-              );
-              const spikeField = noise2D(
-                loopPhase * 11.3 + elapsed * (0.22 + p.tornadoSpikeRate * 0.04) + laneSeed * 13.4,
-                yNorm * 8.6 - elapsed * 0.13
-              );
-              const spikeSign = noise2D(
-                loopPhase * 4.1 - elapsed * 0.09 + laneSeed * 7.7,
-                yNorm * 3.1 + laneSeed * 2.2
-              ) > 0.5 ? 1 : -1;
-
-              const macroSigned = (macro - 0.5) * 2;
-              const mediumSigned = (medium - 0.5) * 2;
-              const spike = Math.max(0, (spikeField - 0.78) / 0.22);
-              const imperfection = Math.max(0, FIXED_TORNADO_IMPERFECTION);
-              const dentAmount =
-                (macroSigned * (0.06 + p.tornadoBowAmp * 0.9) +
-                mediumSigned * (0.02 + p.tornadoShearAmp * 0.55) +
-                spikeSign * spike * (0.045 + p.tornadoSpikeAmp * 0.8)) * imperfection;
-
-              tempPointA.copy(p.anchor);
-              if (tempPointA.lengthSq() > 0.000001) {
-                tempPointA.normalize();
-                p.anchor.addScaledVector(tempPointA, THREE.MathUtils.clamp(dentAmount, -0.34, 0.34));
-              }
-            }
-          } else {
-            const whole = Math.floor(oneWayGlobalCursor);
-            const frac = oneWayGlobalCursor - whole;
-            if (p.oneWayStep >= 0) {
-              p.oneWaySlot = wrapIndex(p.oneWayOffset + whole, band.length);
-              const nextSlot = wrapIndex(p.oneWaySlot + 1, band.length);
-              p.currentIndex = band[p.oneWaySlot];
-              p.nextIndex = band[nextSlot];
-              p.anchor.copy(tempPointA.copy(currentShapePoints[p.currentIndex]).lerp(currentShapePoints[p.nextIndex], frac));
-            } else {
-              p.oneWaySlot = wrapIndex(p.oneWayOffset - whole, band.length);
-              const nextSlot = wrapIndex(p.oneWaySlot - 1, band.length);
-              p.currentIndex = band[p.oneWaySlot];
-              p.nextIndex = band[nextSlot];
-              p.anchor.copy(tempPointA.copy(currentShapePoints[p.currentIndex]).lerp(currentShapePoints[p.nextIndex], frac));
-            }
-          }
-        } else if (band && band.length === 1) {
-          p.currentIndex = band[0];
-          p.nextIndex = band[0];
-          p.anchor.copy(currentShapePoints[band[0]]);
-        }
-      } else {
-        p.turnTimer -= dt;
-        if (p.turnTimer <= 0) {
-          const internalMul = p.isInternal ? FIXED_INTERNAL_SPEED : 1;
-          p.pathSpeed = (0.08 + motionControls.travelSpeed * 0.018) * internalMul;
-          p.turnTimer = 0.16;
-        }
-        p.segmentT += p.pathSpeed * dt;
-        while (p.segmentT >= 1) {
-          p.segmentT -= 1;
-          if (movementMode === "face-cover" && surfacePointIndices.length) {
-            p.faceSlot = (p.faceSlot + p.faceStep + surfacePointIndices.length) % surfacePointIndices.length;
-            const nextSlot = (p.faceSlot + p.faceStep + surfacePointIndices.length) % surfacePointIndices.length;
-            p.prevIndex = p.currentIndex;
-            p.currentIndex = surfacePointIndices[p.faceSlot];
-            p.nextIndex = surfacePointIndices[nextSlot];
-          } else if (movementMode === "alternate-lines" && alternateLineIds.length) {
-            const band = alternateLineBands[p.lineBand];
-            if (band && band.length > 1) {
-              p.lineSlot = (p.lineSlot + p.lineStep + band.length) % band.length;
-              const nextSlot = (p.lineSlot + p.lineStep + band.length) % band.length;
-              p.prevIndex = p.currentIndex;
-              p.currentIndex = band[p.lineSlot];
-              p.nextIndex = band[nextSlot];
-            } else {
-              p.prevIndex = p.currentIndex;
-              p.currentIndex = p.nextIndex;
-              p.nextIndex = chooseNextIndex(p);
-            }
-          } else if (movementMode === "grid-travel" && (gridRowIds.length || gridColIds.length)) {
-            const bands = p.gridFamily === 0 ? gridRowBands : gridColBands;
-            const ids = p.gridFamily === 0 ? gridRowIds : gridColIds;
-            const band = bands[p.gridBand];
-            if (band && band.length > 1) {
-              p.gridSlot = (p.gridSlot + p.gridStep + band.length) % band.length;
-              const nextSlot = (p.gridSlot + p.gridStep + band.length) % band.length;
-              p.prevIndex = p.currentIndex;
-              p.currentIndex = band[p.gridSlot];
-              p.nextIndex = band[nextSlot];
-            } else if (ids.length) {
-              p.gridBand = ids[(Math.random() * ids.length) | 0];
-              const targetBand = bands[p.gridBand];
-              p.gridSlot = (Math.random() * targetBand.length) | 0;
-              p.gridStep = p.gridBand % 2 === 0 ? 1 : -1;
-              const nextSlot = (p.gridSlot + p.gridStep + targetBand.length) % targetBand.length;
-              p.prevIndex = p.currentIndex;
-              p.currentIndex = targetBand[p.gridSlot];
-              p.nextIndex = targetBand[nextSlot];
-            } else {
-              p.prevIndex = p.currentIndex;
-              p.currentIndex = p.nextIndex;
-              p.nextIndex = chooseNextIndex(p);
-            }
-          } else {
-            p.prevIndex = p.currentIndex;
-            p.currentIndex = p.nextIndex;
-            p.nextIndex = chooseNextIndex(p);
-          }
-        }
-      }
-
-      if (!particleOneWayMode) {
-        if (surfaceExternalOnly && !p.isInternal && surfacePointIndices.length && !surfacePointMask[p.nextIndex]) {
-          p.nextIndex = chooseNextIndexSurfaceOnly(p);
-        } else if (movementMode === "face-cover" && surfacePointIndices.length && !surfacePointMask[p.nextIndex]) {
-          p.nextIndex = chooseNextIndexFaceCover(p);
-        }
-
-        tempPointA.copy(currentShapePoints[p.currentIndex]);
-        tempPointB.copy(currentShapePoints[p.nextIndex]);
-        p.anchor.copy(tempPointA.lerp(tempPointB, p.segmentT));
-      }
-      if (p.isInternal) p.anchor.multiplyScalar(p.internalDepth);
-    }
-
-    if ((movementMode === "tornado" || faceOneWayActive) && particleOneWayMode) {
-      const baseFollow = p.isInternal ? 18 : 14;
-      p.pos.lerp(p.anchor, Math.min(1, baseFollow * dt));
-    } else {
-      const recoveryScale = p.isInternal ? 1.15 : 1;
-      p.pos.lerp(p.anchor, Math.min(1, p.followRate * recoveryScale * dt));
-    }
-
-  }
 
   if (nucleusMesh && nucleusMesh.visible) {
     tempPointA.set(0, materialControls.nucleusYOffset, 0);
@@ -4722,35 +3848,6 @@ function animate() {
     });
   }
 
-  if (collisionEnabled && movementMode !== "static-detail") {
-    const sepStrength = movementMode === "tornado"
-      ? THREE.MathUtils.clamp(0.28 * Math.sqrt(900 / Math.max(200, externalCount)), 0.12, 0.32)
-      : oneWayLikeMode
-        ? 0.55
-        : 0.9;
-    enforceParticleSeparation(dt, sepStrength);
-  }
-
-  for (let i = 0; i < particles.length; i++) {
-    const p = particles[i];
-    // Keep particle close to its path anchor so it doesn't spread beyond shape outline.
-    tempClampOffset.copy(p.pos).sub(p.anchor);
-    const offsetLen = tempClampOffset.length();
-    const dynamicOffset =
-      movementMode === "face-cover"
-        ? 0.02
-        : movementMode === "static-detail"
-          ? 0.015
-          : movementMode === "tornado"
-            ? 0.045
-            : movementMode === "one-way"
-              ? 0.045
-          : maxOutlineOffset;
-    if (offsetLen > dynamicOffset) {
-      p.pos.copy(p.anchor).addScaledVector(tempClampOffset, dynamicOffset / offsetLen);
-    }
-  }
-
   const t = clock.elapsedTime;
   const lightTargetY = materialControls.nucleusYOffset || 0;
   const lightDistance = THREE.MathUtils.clamp(materialControls.lightDistance ?? 1, 0.4, 6);
@@ -4775,7 +3872,6 @@ function animate() {
   }
   reflectionSceneryGroup.rotation.y = 0;
   reflectionSceneryGroup.position.y = 0;
-  writeInstances(t);
 
   autoRotateStepQ.setFromAxisAngle(axisY, dt * 0.16);
   group.quaternion.multiply(autoRotateStepQ);
@@ -4813,7 +3909,6 @@ function applyLoadedStartupSceneState() {
   controls.update();
 }
 
-rebuildSpheres(sphereCount);
 applyMaterialControls();
 updateNucleusControlSections(materialControls.nucleusShape);
 
