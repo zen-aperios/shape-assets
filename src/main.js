@@ -107,10 +107,15 @@ function createNucleusGeometry(shape, cornerRadius) {
 }
 
 const STARTUP_CONFIG_KEY = "shape-create.startup-config.v1";
+const EMBED_BOOTSTRAP = globalThis.__SHAPE_VIEWER_EMBED__ || null;
 const DEFAULT_STARTUP_MESH_URL = new URL("../flower.glb", import.meta.url).href;
 const DEFAULT_STARTUP_MESH_FILENAME = "flower.glb";
 const EXPORT_DEFAULT_MESH_URL = "https://cdn.jsdelivr.net/gh/zen-aperios/shape-assets@main/flower.glb";
 const EXPORT_DEFAULT_ENV_URL = "https://cdn.jsdelivr.net/gh/zen-aperios/shape-assets@main/citrus_orchard_road_puresky_1k.exr";
+const EXPORT_RUNTIME_STYLES_URL = "https://cdn.jsdelivr.net/gh/zen-aperios/shape-assets@main/styles.css";
+const EXPORT_RUNTIME_MAIN_URL = "https://cdn.jsdelivr.net/gh/zen-aperios/shape-assets@main/src/main.js";
+const EMBED_STARTUP_MESH_URL = EMBED_BOOTSTRAP?.assets?.meshUrl || null;
+const EMBED_STARTUP_ENV_URL = EMBED_BOOTSTRAP?.assets?.envUrl || null;
 const DEFAULT_STARTUP_SNAPSHOT = {
   shape: {
     name: "custom-mesh",
@@ -302,7 +307,12 @@ function loadStartupConfigIntoInputs() {
   }
 }
 
-const loadedUserStartup = loadStartupConfigIntoInputs();
+const loadedEmbeddedStartup =
+  EMBED_BOOTSTRAP?.startupConfig &&
+  typeof EMBED_BOOTSTRAP.startupConfig === "object"
+    ? applyStartupConfigToInputs(EMBED_BOOTSTRAP.startupConfig)
+    : false;
+const loadedUserStartup = loadedEmbeddedStartup || loadStartupConfigIntoInputs();
 if (!loadedUserStartup) applySnapshotDefaultsToInputs(DEFAULT_STARTUP_SNAPSHOT);
 
 const FIXED_EXTERNAL_SIZE = 1;
@@ -4006,277 +4016,176 @@ function downloadTextFile(filename, text, mimeType) {
   URL.revokeObjectURL(url);
 }
 
-function buildWebflowEmbedHtml(payload) {
-  const payloadText = JSON.stringify(payload);
-  const viewport = payload?.viewport || {};
-  const rawExportWidth = Number(viewport.width);
-  const rawExportHeight = Number(viewport.height);
-  const hasViewportSize =
-    Number.isFinite(rawExportWidth) &&
-    Number.isFinite(rawExportHeight) &&
-    rawExportWidth > 1 &&
-    rawExportHeight > 1;
-  const exportWidth = hasViewportSize ? Math.round(rawExportWidth) : 0;
-  const exportHeight = hasViewportSize ? Math.round(rawExportHeight) : 0;
-  const lockSize = viewport.lockSize !== false && hasViewportSize;
-  const containerStyle = lockSize
-    ? `width:${exportWidth}px;height:${exportHeight}px;max-width:100%;margin:0 auto;`
-    : "width:100%;height:100%;min-height:420px;";
-
-  return `<div id="shape-object" style="${containerStyle}"></div>
-<script type="module">
-import * as THREE from "https://esm.sh/three@0.162.0";
-import { GLTFLoader } from "https://esm.sh/three@0.162.0/examples/jsm/loaders/GLTFLoader.js";
-import { EXRLoader } from "https://esm.sh/three@0.162.0/examples/jsm/loaders/EXRLoader.js";
-import { RGBELoader } from "https://esm.sh/three@0.162.0/examples/jsm/loaders/RGBELoader.js";
-
-(() => {
-  const payload = ${payloadText};
-  const meshUrl = payload.assets?.meshUrl || "${EXPORT_DEFAULT_MESH_URL}";
-  const envUrl = payload.assets?.envUrl || "${EXPORT_DEFAULT_ENV_URL}";
-  const sceneState = payload.scene || {};
-  const viewport = payload.viewport || {};
-  const rawViewportWidth = Number(viewport.width);
-  const rawViewportHeight = Number(viewport.height);
-  const lockSize = viewport.lockSize !== false &&
-    Number.isFinite(rawViewportWidth) &&
-    Number.isFinite(rawViewportHeight) &&
-    rawViewportWidth > 1 &&
-    rawViewportHeight > 1;
-  const lockedWidth = lockSize ? Math.round(rawViewportWidth) : Math.max(1, window.innerWidth || 1);
-  const lockedHeight = lockSize ? Math.round(rawViewportHeight) : Math.max(1, window.innerHeight || 1);
-  const lockedPixelRatio = Math.max(0.5, Math.min(2, Number(viewport.pixelRatio) || 1));
-  const container = document.getElementById("shape-object");
-  if (!container) return;
-
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xf2f4f7);
-  const camera = new THREE.PerspectiveCamera(55, 1, 0.001, 220);
-  camera.position.set(0, 0, 18);
-  const savedCameraPos = Array.isArray(sceneState.cameraPosition) && sceneState.cameraPosition.length === 3
-    ? sceneState.cameraPosition
-    : null;
-  if (savedCameraPos) {
-    camera.position.set(Number(savedCameraPos[0]) || 0, Number(savedCameraPos[1]) || 0, Number(savedCameraPos[2]) || 18);
-  }
-  const savedZoom = Number(sceneState.cameraZoom);
-  if (Number.isFinite(savedZoom) && savedZoom > 0) {
-    camera.zoom = savedZoom;
-  }
-  camera.updateProjectionMatrix();
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(lockSize ? lockedPixelRatio : Math.min(window.devicePixelRatio || 1, 1.5));
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.04;
-  renderer.shadowMap.enabled = false;
-  container.appendChild(renderer.domElement);
-
-  const lightDistance = Math.max(0.4, Math.min(6, Number(payload.render.lightDistance ?? 1)));
-  const topLight = new THREE.SpotLight(0xffffff, 4.1, 0, Math.PI * 0.24, 0.42, 1.35);
-  topLight.position.set(4.2, 17.5, 8.3);
-  topLight.target.position.set(0, 0, 0);
-  scene.add(topLight);
-  scene.add(topLight.target);
-  scene.add(new THREE.HemisphereLight(0xe8f3ff, 0x2a3546, 0.52));
-  const rimLight = new THREE.PointLight(0xaec6ff, 0.42, 36, 2);
-  rimLight.position.set(-4.5, 7.8, -8.4);
-  scene.add(rimLight);
-
-  const group = new THREE.Group();
-  scene.add(group);
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  let glbRoot = null;
-  const savedRotation = Array.isArray(sceneState.groupRotation) && sceneState.groupRotation.length === 3
-    ? sceneState.groupRotation
-    : [0, 0, 0];
-  const savedTarget = Array.isArray(sceneState.controlsTarget) && sceneState.controlsTarget.length === 3
-    ? sceneState.controlsTarget
-    : [0, Number(payload.render?.nucleusYOffset || 0), 0];
-  const targetVec = new THREE.Vector3(
-    Number(savedTarget[0]) || 0,
-    Number(savedTarget[1]) || 0,
-    Number(savedTarget[2]) || 0
-  );
-  const hasExplicitCamera = !!savedCameraPos;
-  const fitBox = new THREE.Box3();
-  const fitCenter = new THREE.Vector3();
-  const fitSize = new THREE.Vector3();
-
-  function centerAndFitObject(root) {
-    if (!root) return;
-    root.updateMatrixWorld(true);
-    fitBox.setFromObject(root);
-    if (fitBox.isEmpty()) return;
-    fitBox.getCenter(fitCenter);
-    fitBox.getSize(fitSize);
-    root.position.sub(fitCenter);
-    root.position.y += Number(payload.render?.nucleusYOffset ?? 0);
-    root.updateMatrixWorld(true);
-    if (!hasExplicitCamera) {
-      const radius = Math.max(0.2, fitSize.length() * 0.5);
-      const fov = THREE.MathUtils.degToRad(camera.fov);
-      const dist = Math.max(6, radius / Math.tan(fov * 0.5) * 1.2);
-      camera.position.set(0, 0, dist);
-      camera.near = Math.max(0.001, dist * 0.001);
-      camera.far = Math.max(220, dist * 25);
-    } else {
-      const camDist = Math.max(0.001, camera.position.distanceTo(targetVec));
-      camera.near = Math.max(0.001, camDist * 0.001);
-      camera.far = Math.max(220, camDist * 25);
+function buildWebflowEmbedHtml(payload, startupConfig) {
+  const bootstrapText = JSON.stringify({
+    startupConfig,
+    assets: {
+      meshUrl: payload?.assets?.meshUrl || EXPORT_DEFAULT_MESH_URL,
+      envUrl: payload?.assets?.envUrl || EXPORT_DEFAULT_ENV_URL
     }
-    camera.lookAt(targetVec);
-    camera.updateProjectionMatrix();
+  });
+  return `<link rel="stylesheet" href="${EXPORT_RUNTIME_STYLES_URL}">
+<style>
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent !important;
+}
+#app {
+  width: 100%;
+  height: 100%;
+}
+.hud {
+  display: none !important;
+}
+</style>
+<div id="app"></div>
+<div class="hud">
+  <div><b>Shape Viewer</b></div>
+  <div class="controls">
+    <select id="shapeSelect">
+      <option value="heart">Heart</option>
+      <option value="sphere">Sphere</option>
+      <option value="torus">Torus</option>
+      <option value="cube">Cube</option>
+      <option value="cone">Cone</option>
+      <option value="cylinder">Cylinder</option>
+      <option value="helix">Helix</option>
+      <option value="wave">Wave</option>
+      <option value="flower">Flower</option>
+      <option value="custom-image" disabled>Custom Image</option>
+      <option value="custom-mesh" disabled>Custom Mesh</option>
+    </select>
+    <input id="imageInput" type="file" accept="image/*" />
+    <input id="meshInput" type="file" accept=".glb,.gltf,.obj,model/gltf-binary,model/gltf+json" />
+    <button id="reflectionImageBtn" type="button">Reflection Image</button>
+    <input id="reflectionImageInput" type="file" accept=".exr,.hdr,image/*" style="display:none" />
+    <button id="exportDataBtn" type="button">Export JSON</button>
+    <button id="exportWebflowBtn" type="button">Export Webflow HTML</button>
+    <button id="saveStartupBtn" type="button">Save Startup</button>
+    <button id="clearStartupBtn" type="button">Clear Startup</button>
+  </div>
+  <div class="panel">
+    <input id="shapeScale" type="hidden" value="1" />
+    <input id="collisionEnabled" type="hidden" value="true" />
+    <label for="travelSpeed">Travel Speed</label>
+    <input id="travelSpeed" type="range" min="1" max="100" step="1" value="8" />
+    <label for="showImportedSurface">Show Imported Surface</label>
+    <input id="showImportedSurface" type="checkbox" checked />
+    <input id="sphereColor" type="hidden" value="#90b2ff" />
+    <input id="internalColor" type="hidden" value="#4f6fb6" />
+    <label for="nucleusCornerRadius">Nucleus Corner Radius</label>
+    <input id="nucleusCornerRadius" type="range" min="0" max="0.8" step="0.005" value="0.12" />
+    <label for="nucleusYOffset">Nucleus Y Offset</label>
+    <input id="nucleusYOffset" type="range" min="-6" max="6" step="0.01" value="0" />
+    <label for="lightDistance">Light Distance</label>
+    <input id="lightDistance" type="range" min="0.4" max="6" step="0.01" value="1" />
+    <label for="nucleusColor">Nucleus Color</label>
+    <input id="nucleusColor" type="color" value="#a8d8ff" />
+    <label for="nucleusOpacity">Nucleus Opacity</label>
+    <input id="nucleusOpacity" type="range" min="0.05" max="1" step="0.01" value="0.95" />
+    <label for="nucleusGlare">Nucleus Glare</label>
+    <input id="nucleusGlare" type="range" min="0" max="1" step="0.01" value="0.5" />
+    <label for="nucleusMatte">Nucleus Matte</label>
+    <input id="nucleusMatte" type="range" min="0" max="1" step="0.01" value="0.35" />
+    <label for="nucleusGlow">Nucleus Glow</label>
+    <input id="nucleusGlow" type="range" min="0" max="2" step="0.01" value="0.45" />
+    <label for="nucleusTransmission">Nucleus Transmission</label>
+    <input id="nucleusTransmission" type="range" min="0" max="1" step="0.01" value="0.18" />
+    <label for="nucleusThickness">Nucleus Thickness</label>
+    <input id="nucleusThickness" type="range" min="0" max="6" step="0.01" value="1.2" />
+    <label for="nucleusAttenuationColor">Nucleus Atten Color</label>
+    <input id="nucleusAttenuationColor" type="color" value="#d8ecff" />
+    <label for="nucleusAttenuationDistance">Nucleus Atten Dist</label>
+    <input id="nucleusAttenuationDistance" type="range" min="0.1" max="20" step="0.1" value="4.0" />
+    <label for="nucleusSpecular">Nucleus Specular</label>
+    <input id="nucleusSpecular" type="range" min="0" max="1" step="0.01" value="1.0" />
+    <label for="nucleusSpecularColor">Nucleus Spec Color</label>
+    <input id="nucleusSpecularColor" type="color" value="#ffffff" />
+    <label for="nucleusClearcoat">Nucleus Clearcoat</label>
+    <input id="nucleusClearcoat" type="range" min="0" max="1" step="0.01" value="1.0" />
+    <label for="nucleusClearcoatRoughness">Nucleus Coat Rough</label>
+    <input id="nucleusClearcoatRoughness" type="range" min="0" max="1" step="0.01" value="0.08" />
+    <label for="nucleusIridescence">Nucleus Iridescence</label>
+    <input id="nucleusIridescence" type="range" min="0" max="1" step="0.01" value="0.65" />
+    <label for="nucleusIor">Nucleus IOR</label>
+    <input id="nucleusIor" type="range" min="1" max="2.333" step="0.001" value="2.2" />
+    <label for="nucleusEnvIntensity">Nucleus Env Intensity</label>
+    <input id="nucleusEnvIntensity" type="range" min="0" max="8" step="0.01" value="3.2" />
+    <label for="nucleusReflectTint">Nucleus Reflect Tint</label>
+    <input id="nucleusReflectTint" type="color" value="#a8d8ff" />
+    <label for="nucleusReflectTintMix">Nucleus Tint Mix</label>
+    <input id="nucleusReflectTintMix" type="range" min="0" max="1" step="0.01" value="0" />
+    <label for="surfaceChroma">Surface Chroma</label>
+    <input id="surfaceChroma" type="range" min="0" max="1" step="0.01" value="0" />
+    <label for="reflectionStrength">Reflection Strength</label>
+    <input id="reflectionStrength" type="range" min="0" max="4" step="0.01" value="1.8" />
+    <label for="nucleusRimStrength">Nucleus Rim Strength</label>
+    <input id="nucleusRimStrength" type="range" min="0" max="2.5" step="0.01" value="0.35" />
+    <label for="nucleusRimPower">Nucleus Rim Power</label>
+    <input id="nucleusRimPower" type="range" min="0.5" max="8" step="0.01" value="2.6" />
+    <label for="nucleusRimColor">Nucleus Rim Color</label>
+    <input id="nucleusRimColor" type="color" value="#cfe3ff" />
+    <label for="nucleusNoiseAmount">Nucleus Noise Amount</label>
+    <input id="nucleusNoiseAmount" type="range" min="0" max="2" step="0.01" value="0.2" />
+    <label for="nucleusNoiseScale">Nucleus Noise Scale</label>
+    <input id="nucleusNoiseScale" type="range" min="0.2" max="8" step="0.01" value="1.4" />
+    <input id="nucleusShellMode" type="checkbox" />
+    <input id="nucleusShellColor" type="hidden" value="#9fc6ff" />
+    <input id="nucleusShellThickness" type="hidden" value="0.08" />
+    <input id="nucleusShellLayers" type="hidden" value="0" />
+    <input id="nucleusPulseAmount" type="hidden" value="0" />
+    <input id="nucleusPulseSpeed" type="hidden" value="1.2" />
+    <input id="nucleusDistortionAmount" type="hidden" value="0" />
+    <input id="nucleusDistortionSpeed" type="hidden" value="1.5" />
+    <input id="nucleusBlobAmount" type="hidden" value="0.18" />
+    <input id="nucleusBlobScale" type="hidden" value="1.7" />
+    <input id="nucleusBlobSpeed" type="hidden" value="1.1" />
+    <input id="nucleusGradientTop" type="hidden" value="#ffffff" />
+    <input id="nucleusGradientBottom" type="hidden" value="#7ea5ff" />
+    <input id="nucleusGradientMix" type="hidden" value="0.15" />
+    <input id="nucleusSpinX" type="hidden" value="0" />
+    <input id="nucleusSpinY" type="hidden" value="0.22" />
+    <input id="nucleusSpinZ" type="hidden" value="0" />
+    <input id="nucleusBloomEnabled" type="checkbox" />
+    <input id="nucleusBloomStrength" type="hidden" value="0.7" />
+    <input id="nucleusBloomRadius" type="hidden" value="0.35" />
+    <input id="nucleusBloomThreshold" type="hidden" value="0.75" />
+    <label for="internalDetailShading">Internal Shading</label>
+    <input id="internalDetailShading" type="checkbox" checked />
+    <label for="particleLighting">Particle Lighting</label>
+    <input id="particleLighting" type="checkbox" checked />
+    <label for="sphereShadows">Sphere Shadows</label>
+    <input id="sphereShadows" type="checkbox" checked />
+    <label for="shadowContrast">Shadow Contrast</label>
+    <input id="shadowContrast" type="range" min="0" max="2.5" step="0.01" value="1" />
+    <label for="sphereOpacity">Opacity</label>
+    <input id="sphereOpacity" type="range" min="0.05" max="1" step="0.01" value="0.95" />
+    <label for="sphereGlare">Glare</label>
+    <input id="sphereGlare" type="range" min="0" max="1" step="0.01" value="0.45" />
+    <label for="sphereMatte">Matte</label>
+    <input id="sphereMatte" type="range" min="0" max="1" step="0.01" value="0.35" />
+    <label for="internalMatte">Internal Matte</label>
+    <input id="internalMatte" type="range" min="0" max="1" step="0.01" value="0.45" />
+    <label for="sphereGlow">Glow</label>
+    <input id="sphereGlow" type="range" min="0" max="2" step="0.01" value="0.35" />
+  </div>
+  <div id="statusLine" class="status"></div>
+</div>
+<script>
+window.__SHAPE_VIEWER_EMBED__ = ${bootstrapText};
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.161.0/build/three.module.js",
+    "three/examples/jsm/": "https://unpkg.com/three@0.161.0/examples/jsm/"
   }
-
-  function makeGlassMaterial() {
-    const r = payload.render || {};
-    const m = new THREE.MeshPhysicalMaterial({
-      color: new THREE.Color(r.nucleusColor || "#ffffff"),
-      transparent: Number(r.nucleusOpacity ?? 1) < 0.999,
-      opacity: Number(r.nucleusOpacity ?? 1),
-      transmission: THREE.MathUtils.clamp(Number(r.nucleusTransmission ?? 1), 0, 1),
-      thickness: Math.max(0.001, Number(r.nucleusThickness ?? 0)),
-      attenuationColor: new THREE.Color(r.nucleusAttenuationColor || "#ffffff"),
-      attenuationDistance: Math.max(0.01, Number(r.nucleusAttenuationDistance ?? 20)),
-      ior: THREE.MathUtils.clamp(Number(r.nucleusIor ?? 1.5), 1, 2.333),
-      clearcoat: THREE.MathUtils.clamp(Number(r.nucleusClearcoat ?? 0), 0, 1),
-      clearcoatRoughness: THREE.MathUtils.clamp(Number(r.nucleusClearcoatRoughness ?? 0), 0, 1),
-      iridescence: THREE.MathUtils.clamp(Number(r.nucleusIridescence ?? 0), 0, 1),
-      roughness: 0.02,
-      metalness: 0,
-      specularIntensity: THREE.MathUtils.clamp(Number(r.nucleusSpecular ?? 1), 0, 1.35),
-      specularColor: new THREE.Color(r.nucleusSpecularColor || "#ffffff"),
-      side: THREE.DoubleSide
-    });
-    m.envMapIntensity = Math.max(0, Number(r.nucleusEnvIntensity ?? 1)) * Math.max(0, Number(r.reflectionStrength ?? 1));
-    return m;
-  }
-
-  async function loadEnvironment(url) {
-    if (!url) return;
-    const lower = String(url).toLowerCase();
-    const tex = await new Promise((resolve, reject) => {
-      if (lower.endsWith(".exr")) {
-        new EXRLoader().load(url, resolve, undefined, reject);
-      } else if (lower.endsWith(".hdr")) {
-        new RGBELoader().load(url, resolve, undefined, reject);
-      } else {
-        new THREE.TextureLoader().load(url, resolve, undefined, reject);
-      }
-    });
-    tex.mapping = THREE.EquirectangularReflectionMapping;
-    if (!lower.endsWith(".exr") && !lower.endsWith(".hdr")) tex.colorSpace = THREE.SRGBColorSpace;
-    const envRT = pmrem.fromEquirectangular(tex);
-    scene.environment = envRT.texture;
-    tex.dispose?.();
-  }
-
-  async function loadGlb(url) {
-    if (!url) return false;
-    const loader = new GLTFLoader();
-    const gltf = await new Promise((resolve, reject) => loader.load(url, resolve, undefined, reject));
-    glbRoot = gltf.scene || gltf.scenes?.[0] || null;
-    if (!glbRoot) return false;
-    const glass = makeGlassMaterial();
-    glbRoot.traverse((obj) => {
-      if (!obj.isMesh) return;
-      obj.material = glass.clone();
-      obj.castShadow = false;
-      obj.receiveShadow = false;
-    });
-    glbRoot.scale.setScalar(Number(payload.shape?.scale ?? 1));
-    group.add(glbRoot);
-    centerAndFitObject(glbRoot);
-    return true;
-  }
-
-  function addFallbackPointCloud() {
-    const geo = new THREE.SphereGeometry(0.1, 14, 12);
-    const mat = new THREE.MeshStandardMaterial({
-      color: payload.render?.externalColor || "#90b2ff",
-      transparent: true,
-      opacity: Number(payload.render?.opacity ?? 0.95),
-      roughness: 0.62,
-      metalness: 0.12
-    });
-    const points = Array.isArray(payload.points?.external) ? payload.points.external.slice() : [];
-    if (points.length === 0) {
-      const n = 1200;
-      const ga = Math.PI * (3 - Math.sqrt(5));
-      for (let i = 0; i < n; i++) {
-        const y = 1 - (i / Math.max(1, n - 1)) * 2;
-        const rr = Math.sqrt(Math.max(0, 1 - y * y));
-        const t = i * ga;
-        points.push([Math.cos(t) * rr * 4.2, y * 4.2, Math.sin(t) * rr * 4.2]);
-      }
-    }
-    const mesh = new THREE.InstancedMesh(geo, mat, Math.max(1, points.length));
-    const dummy = new THREE.Object3D();
-    for (let i = 0; i < points.length; i++) {
-      const p = points[i];
-      dummy.position.set(p[0], p[1], p[2]);
-      dummy.scale.setScalar(Number(payload.render?.externalSize ?? 1));
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-    }
-    mesh.count = points.length;
-    mesh.instanceMatrix.needsUpdate = true;
-    group.add(mesh);
-    camera.position.set(0, 0, 14);
-  }
-
-  function onResize() {
-    const w = lockSize ? lockedWidth : (container.clientWidth || window.innerWidth);
-    const h = lockSize ? lockedHeight : (container.clientHeight || window.innerHeight);
-    camera.aspect = w / Math.max(1, h);
-    camera.updateProjectionMatrix();
-    renderer.setSize(w, h, false);
-  }
-  onResize();
-  if (!lockSize) {
-    window.addEventListener("resize", onResize);
-  }
-
-  function animate(t) {
-    const s = t * 0.001;
-    const nearMix = 1 - ((lightDistance - 0.4) / (6 - 0.4));
-    topLight.position.set(
-      THREE.MathUtils.lerp(9.2, 1.8, nearMix),
-      6.8 + 7.6 * lightDistance,
-      5.0 + 5.8 * lightDistance
-    );
-    topLight.intensity = THREE.MathUtils.lerp(1.1, 3.8, nearMix);
-    topLight.penumbra = THREE.MathUtils.lerp(0.3, 0.55, nearMix);
-    topLight.angle = THREE.MathUtils.lerp(Math.PI * 0.2, Math.PI * 0.28, nearMix);
-    topLight.target.position.set(0, Number(payload.render.nucleusYOffset || 0), 0);
-    rimLight.position.set(-4.4 - 1.2 * lightDistance, 6.4, -7.1 - 0.9 * lightDistance);
-    group.rotation.x = Number(savedRotation[0]) || 0;
-    group.rotation.y = (Number(savedRotation[1]) || 0) + s * 0.16;
-    group.rotation.z = Number(savedRotation[2]) || 0;
-    camera.lookAt(targetVec);
-    renderer.render(scene, camera);
-    requestAnimationFrame(animate);
-  }
-
-  (async () => {
-    try {
-      await loadEnvironment(envUrl);
-    } catch (err) {
-      console.warn("Environment load failed:", err);
-    }
-    try {
-      const loaded = await loadGlb(meshUrl);
-      if (!loaded) addFallbackPointCloud();
-    } catch (err) {
-      console.warn("GLB load failed, using fallback points:", err);
-      addFallbackPointCloud();
-    }
-    requestAnimationFrame(animate);
-  })();
-})();
-</script>`;
+}
+</script>
+<script type="module" src="${EXPORT_RUNTIME_MAIN_URL}"></script>`;
 }
 
 function exportSnapshotJson() {
@@ -4288,8 +4197,9 @@ function exportSnapshotJson() {
 
 function exportWebflowEmbed() {
   const payload = buildExportSnapshot();
+  const startupConfig = buildStartupConfig();
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const html = buildWebflowEmbedHtml(payload);
+  const html = buildWebflowEmbedHtml(payload, startupConfig);
   downloadTextFile(`webflow-shape-embed-${stamp}.html`, html, "text/html");
   setStatus("Exported Webflow embed HTML.");
 }
@@ -4908,12 +4818,14 @@ applyMaterialControls();
 updateNucleusControlSections(materialControls.nucleusShape);
 
 async function bootScene() {
-  let startupReflectionLoaded = await loadReflectionImageEnvFromUrl(DEFAULT_REFLECTION_IMAGE_URL, "Startup reflection");
+  const startupEnvUrl = EMBED_STARTUP_ENV_URL || DEFAULT_REFLECTION_IMAGE_URL;
+  const startupMeshUrl = EMBED_STARTUP_MESH_URL || DEFAULT_STARTUP_MESH_URL;
+  let startupReflectionLoaded = await loadReflectionImageEnvFromUrl(startupEnvUrl, "Startup reflection");
   if (!startupReflectionLoaded) {
     startupReflectionLoaded = await loadReflectionImageEnvFromUrl("./citrus_orchard_road_puresky_1k.exr", "Startup reflection");
   }
   let startupMeshLoaded = await loadCustomMeshFromUrl(
-    DEFAULT_STARTUP_MESH_URL,
+    startupMeshUrl,
     DEFAULT_STARTUP_MESH_FILENAME,
     "Startup mesh loaded"
   );
