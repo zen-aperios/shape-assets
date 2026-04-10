@@ -109,6 +109,8 @@ function createNucleusGeometry(shape, cornerRadius) {
 const STARTUP_CONFIG_KEY = "shape-create.startup-config.v1";
 const DEFAULT_STARTUP_MESH_URL = new URL("../flower.glb", import.meta.url).href;
 const DEFAULT_STARTUP_MESH_FILENAME = "flower.glb";
+const EXPORT_DEFAULT_MESH_URL = "https://cdn.jsdelivr.net/gh/zen-aperios/shape-assets@main/flower.glb";
+const EXPORT_DEFAULT_ENV_URL = "https://cdn.jsdelivr.net/gh/zen-aperios/shape-assets@main/citrus_orchard_road_puresky_1k.exr";
 const DEFAULT_STARTUP_SNAPSHOT = {
   shape: {
     name: "custom-mesh",
@@ -3900,9 +3902,22 @@ function buildExportSnapshot() {
     }
   }
 
+  const viewportWidth = Math.max(
+    1,
+    Math.round(renderer?.domElement?.clientWidth || container?.clientWidth || window.innerWidth || 1)
+  );
+  const viewportHeight = Math.max(
+    1,
+    Math.round(renderer?.domElement?.clientHeight || container?.clientHeight || window.innerHeight || 1)
+  );
+
   return {
     version: 1,
     createdAt: new Date().toISOString(),
+    assets: {
+      meshUrl: EXPORT_DEFAULT_MESH_URL,
+      envUrl: EXPORT_DEFAULT_ENV_URL
+    },
     shape: {
       name: shapeSelect?.value || "custom",
       scale: round4(shapeScale),
@@ -3965,6 +3980,18 @@ function buildExportSnapshot() {
       shadowContrast: round4(materialControls.shadowContrast ?? 1),
       opacity: round4(materialControls.opacity)
     },
+    scene: {
+      cameraPosition: [round4(camera.position.x), round4(camera.position.y), round4(camera.position.z)],
+      controlsTarget: [round4(controls.target.x), round4(controls.target.y), round4(controls.target.z)],
+      cameraZoom: round4(camera.zoom),
+      groupRotation: [round4(group.rotation.x), round4(group.rotation.y), round4(group.rotation.z)]
+    },
+    viewport: {
+      width: viewportWidth,
+      height: viewportHeight,
+      pixelRatio: round4(Math.min(window.devicePixelRatio || 1, 1.5)),
+      lockSize: true
+    },
     points: { external, internal }
   };
 }
@@ -3981,162 +4008,275 @@ function downloadTextFile(filename, text, mimeType) {
 
 function buildWebflowEmbedHtml(payload) {
   const payloadText = JSON.stringify(payload);
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <style>
-    html,body,#shape-object{margin:0;width:100%;height:100%}
-    body{overflow:hidden;background:transparent}
-    #shape-object canvas{display:block}
-  </style>
-</head>
-<body>
-  <div id="shape-object"></div>
-  <script>
-  (() => {
-    const payload = ${payloadText};
-    function ensureContainer() {
-      let el = document.getElementById("shape-object");
-      if (!el) {
-        el = document.createElement("div");
-        el.id = "shape-object";
-        el.style.width = "100vw";
-        el.style.height = "100vh";
-        el.style.margin = "0";
-        document.body.style.margin = "0";
-        document.body.appendChild(el);
-      }
-      return el;
+  const viewport = payload?.viewport || {};
+  const rawExportWidth = Number(viewport.width);
+  const rawExportHeight = Number(viewport.height);
+  const hasViewportSize =
+    Number.isFinite(rawExportWidth) &&
+    Number.isFinite(rawExportHeight) &&
+    rawExportWidth > 1 &&
+    rawExportHeight > 1;
+  const exportWidth = hasViewportSize ? Math.round(rawExportWidth) : 0;
+  const exportHeight = hasViewportSize ? Math.round(rawExportHeight) : 0;
+  const lockSize = viewport.lockSize !== false && hasViewportSize;
+  const containerStyle = lockSize
+    ? `width:${exportWidth}px;height:${exportHeight}px;max-width:100%;margin:0 auto;`
+    : "width:100%;height:100%;min-height:420px;";
+
+  return `<div id="shape-object" style="${containerStyle}"></div>
+<script type="module">
+import * as THREE from "https://esm.sh/three@0.162.0";
+import { GLTFLoader } from "https://esm.sh/three@0.162.0/examples/jsm/loaders/GLTFLoader.js";
+import { EXRLoader } from "https://esm.sh/three@0.162.0/examples/jsm/loaders/EXRLoader.js";
+import { RGBELoader } from "https://esm.sh/three@0.162.0/examples/jsm/loaders/RGBELoader.js";
+
+(() => {
+  const payload = ${payloadText};
+  const meshUrl = payload.assets?.meshUrl || "${EXPORT_DEFAULT_MESH_URL}";
+  const envUrl = payload.assets?.envUrl || "${EXPORT_DEFAULT_ENV_URL}";
+  const sceneState = payload.scene || {};
+  const viewport = payload.viewport || {};
+  const rawViewportWidth = Number(viewport.width);
+  const rawViewportHeight = Number(viewport.height);
+  const lockSize = viewport.lockSize !== false &&
+    Number.isFinite(rawViewportWidth) &&
+    Number.isFinite(rawViewportHeight) &&
+    rawViewportWidth > 1 &&
+    rawViewportHeight > 1;
+  const lockedWidth = lockSize ? Math.round(rawViewportWidth) : Math.max(1, window.innerWidth || 1);
+  const lockedHeight = lockSize ? Math.round(rawViewportHeight) : Math.max(1, window.innerHeight || 1);
+  const lockedPixelRatio = Math.max(0.5, Math.min(2, Number(viewport.pixelRatio) || 1));
+  const container = document.getElementById("shape-object");
+  if (!container) return;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xf2f4f7);
+  const camera = new THREE.PerspectiveCamera(55, 1, 0.001, 220);
+  camera.position.set(0, 0, 18);
+  const savedCameraPos = Array.isArray(sceneState.cameraPosition) && sceneState.cameraPosition.length === 3
+    ? sceneState.cameraPosition
+    : null;
+  if (savedCameraPos) {
+    camera.position.set(Number(savedCameraPos[0]) || 0, Number(savedCameraPos[1]) || 0, Number(savedCameraPos[2]) || 18);
+  }
+  const savedZoom = Number(sceneState.cameraZoom);
+  if (Number.isFinite(savedZoom) && savedZoom > 0) {
+    camera.zoom = savedZoom;
+  }
+  camera.updateProjectionMatrix();
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(lockSize ? lockedPixelRatio : Math.min(window.devicePixelRatio || 1, 1.5));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.04;
+  renderer.shadowMap.enabled = false;
+  container.appendChild(renderer.domElement);
+
+  const lightDistance = Math.max(0.4, Math.min(6, Number(payload.render.lightDistance ?? 1)));
+  const topLight = new THREE.SpotLight(0xffffff, 4.1, 0, Math.PI * 0.24, 0.42, 1.35);
+  topLight.position.set(4.2, 17.5, 8.3);
+  topLight.target.position.set(0, 0, 0);
+  scene.add(topLight);
+  scene.add(topLight.target);
+  scene.add(new THREE.HemisphereLight(0xe8f3ff, 0x2a3546, 0.52));
+  const rimLight = new THREE.PointLight(0xaec6ff, 0.42, 36, 2);
+  rimLight.position.set(-4.5, 7.8, -8.4);
+  scene.add(rimLight);
+
+  const group = new THREE.Group();
+  scene.add(group);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  let glbRoot = null;
+  const savedRotation = Array.isArray(sceneState.groupRotation) && sceneState.groupRotation.length === 3
+    ? sceneState.groupRotation
+    : [0, 0, 0];
+  const savedTarget = Array.isArray(sceneState.controlsTarget) && sceneState.controlsTarget.length === 3
+    ? sceneState.controlsTarget
+    : [0, Number(payload.render?.nucleusYOffset || 0), 0];
+  const targetVec = new THREE.Vector3(
+    Number(savedTarget[0]) || 0,
+    Number(savedTarget[1]) || 0,
+    Number(savedTarget[2]) || 0
+  );
+  const hasExplicitCamera = !!savedCameraPos;
+  const fitBox = new THREE.Box3();
+  const fitCenter = new THREE.Vector3();
+  const fitSize = new THREE.Vector3();
+
+  function centerAndFitObject(root) {
+    if (!root) return;
+    root.updateMatrixWorld(true);
+    fitBox.setFromObject(root);
+    if (fitBox.isEmpty()) return;
+    fitBox.getCenter(fitCenter);
+    fitBox.getSize(fitSize);
+    root.position.sub(fitCenter);
+    root.position.y += Number(payload.render?.nucleusYOffset ?? 0);
+    root.updateMatrixWorld(true);
+    if (!hasExplicitCamera) {
+      const radius = Math.max(0.2, fitSize.length() * 0.5);
+      const fov = THREE.MathUtils.degToRad(camera.fov);
+      const dist = Math.max(6, radius / Math.tan(fov * 0.5) * 1.2);
+      camera.position.set(0, 0, dist);
+      camera.near = Math.max(0.001, dist * 0.001);
+      camera.far = Math.max(220, dist * 25);
+    } else {
+      const camDist = Math.max(0.001, camera.position.distanceTo(targetVec));
+      camera.near = Math.max(0.001, camDist * 0.001);
+      camera.far = Math.max(220, camDist * 25);
     }
+    camera.lookAt(targetVec);
+    camera.updateProjectionMatrix();
+  }
 
-    function start() {
-      const container = ensureContainer();
-      const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(55, 1, 0.001, 220);
-      camera.position.set(0, 0, 18);
+  function makeGlassMaterial() {
+    const r = payload.render || {};
+    const m = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color(r.nucleusColor || "#ffffff"),
+      transparent: Number(r.nucleusOpacity ?? 1) < 0.999,
+      opacity: Number(r.nucleusOpacity ?? 1),
+      transmission: THREE.MathUtils.clamp(Number(r.nucleusTransmission ?? 1), 0, 1),
+      thickness: Math.max(0.001, Number(r.nucleusThickness ?? 0)),
+      attenuationColor: new THREE.Color(r.nucleusAttenuationColor || "#ffffff"),
+      attenuationDistance: Math.max(0.01, Number(r.nucleusAttenuationDistance ?? 20)),
+      ior: THREE.MathUtils.clamp(Number(r.nucleusIor ?? 1.5), 1, 2.333),
+      clearcoat: THREE.MathUtils.clamp(Number(r.nucleusClearcoat ?? 0), 0, 1),
+      clearcoatRoughness: THREE.MathUtils.clamp(Number(r.nucleusClearcoatRoughness ?? 0), 0, 1),
+      iridescence: THREE.MathUtils.clamp(Number(r.nucleusIridescence ?? 0), 0, 1),
+      roughness: 0.02,
+      metalness: 0,
+      specularIntensity: THREE.MathUtils.clamp(Number(r.nucleusSpecular ?? 1), 0, 1.35),
+      specularColor: new THREE.Color(r.nucleusSpecularColor || "#ffffff"),
+      side: THREE.DoubleSide
+    });
+    m.envMapIntensity = Math.max(0, Number(r.nucleusEnvIntensity ?? 1)) * Math.max(0, Number(r.reflectionStrength ?? 1));
+    return m;
+  }
 
-      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-      if ("outputColorSpace" in renderer && THREE.SRGBColorSpace) {
-        renderer.outputColorSpace = THREE.SRGBColorSpace;
-      } else if ("outputEncoding" in renderer && THREE.sRGBEncoding) {
-        renderer.outputEncoding = THREE.sRGBEncoding;
+  async function loadEnvironment(url) {
+    if (!url) return;
+    const lower = String(url).toLowerCase();
+    const tex = await new Promise((resolve, reject) => {
+      if (lower.endsWith(".exr")) {
+        new EXRLoader().load(url, resolve, undefined, reject);
+      } else if (lower.endsWith(".hdr")) {
+        new RGBELoader().load(url, resolve, undefined, reject);
+      } else {
+        new THREE.TextureLoader().load(url, resolve, undefined, reject);
       }
-      renderer.toneMapping = THREE.ACESFilmicToneMapping || THREE.NoToneMapping;
-      renderer.toneMappingExposure = 1.04;
-      renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-      container.appendChild(renderer.domElement);
+    });
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    if (!lower.endsWith(".exr") && !lower.endsWith(".hdr")) tex.colorSpace = THREE.SRGBColorSpace;
+    const envRT = pmrem.fromEquirectangular(tex);
+    scene.environment = envRT.texture;
+    tex.dispose?.();
+  }
 
-      const lightDistance = Math.max(0.4, Math.min(6, Number(payload.render.lightDistance ?? 1)));
-      const topLight = new THREE.SpotLight(0xffffff, 4.1, 0, Math.PI * 0.24, 0.42, 1.35);
-      topLight.position.set(4.2, 17.5, 8.3);
-      topLight.target.position.set(0, 0, 0);
-      topLight.castShadow = true;
-      topLight.shadow.mapSize.set(1024, 1024);
-      topLight.shadow.bias = -0.00008;
-      topLight.shadow.normalBias = 0.016;
-      topLight.shadow.radius = 5;
-      topLight.shadow.camera.near = 0.5;
-      topLight.shadow.camera.far = 80;
-      scene.add(topLight);
-      scene.add(topLight.target);
-      scene.add(new THREE.HemisphereLight(0xe8f3ff, 0x2a3546, 0.52));
-      const rimLight = new THREE.PointLight(0xaec6ff, 0.42, 36, 2);
-      rimLight.position.set(-4.5, 7.8, -8.4);
-      scene.add(rimLight);
+  async function loadGlb(url) {
+    if (!url) return false;
+    const loader = new GLTFLoader();
+    const gltf = await new Promise((resolve, reject) => loader.load(url, resolve, undefined, reject));
+    glbRoot = gltf.scene || gltf.scenes?.[0] || null;
+    if (!glbRoot) return false;
+    const glass = makeGlassMaterial();
+    glbRoot.traverse((obj) => {
+      if (!obj.isMesh) return;
+      obj.material = glass.clone();
+      obj.castShadow = false;
+      obj.receiveShadow = false;
+    });
+    glbRoot.scale.setScalar(Number(payload.shape?.scale ?? 1));
+    group.add(glbRoot);
+    centerAndFitObject(glbRoot);
+    return true;
+  }
 
-      const group = new THREE.Group();
-      scene.add(group);
-      const geo = new THREE.SphereGeometry(0.1, 14, 12);
-
-      const extMat = new THREE.MeshStandardMaterial({
-      color: payload.render.externalColor,
-      transparent: payload.render.opacity < 0.999,
-      opacity: payload.render.opacity,
+  function addFallbackPointCloud() {
+    const geo = new THREE.SphereGeometry(0.1, 14, 12);
+    const mat = new THREE.MeshStandardMaterial({
+      color: payload.render?.externalColor || "#90b2ff",
+      transparent: true,
+      opacity: Number(payload.render?.opacity ?? 0.95),
       roughness: 0.62,
       metalness: 0.12
     });
-      const intMat = new THREE.MeshStandardMaterial({
-      color: payload.render.internalColor,
-      transparent: payload.render.opacity < 0.999,
-      opacity: payload.render.opacity,
-      roughness: 0.62,
-      metalness: 0.12
-    });
-
-      function buildInstances(points, material, scale) {
-        const mesh = new THREE.InstancedMesh(geo, material, Math.max(1, points.length));
-        const dummy = new THREE.Object3D();
-        for (let i = 0; i < points.length; i++) {
-          const p = points[i];
-          dummy.position.set(p[0], p[1], p[2]);
-          dummy.scale.setScalar(scale);
-          dummy.updateMatrix();
-          mesh.setMatrixAt(i, dummy.matrix);
-        }
-        mesh.count = points.length;
-        mesh.instanceMatrix.needsUpdate = true;
-        mesh.castShadow = true;
-        mesh.receiveShadow = false;
-        return mesh;
+    const points = Array.isArray(payload.points?.external) ? payload.points.external.slice() : [];
+    if (points.length === 0) {
+      const n = 1200;
+      const ga = Math.PI * (3 - Math.sqrt(5));
+      for (let i = 0; i < n; i++) {
+        const y = 1 - (i / Math.max(1, n - 1)) * 2;
+        const rr = Math.sqrt(Math.max(0, 1 - y * y));
+        const t = i * ga;
+        points.push([Math.cos(t) * rr * 4.2, y * 4.2, Math.sin(t) * rr * 4.2]);
       }
-
-      group.add(buildInstances(payload.points.external, extMat, payload.render.externalSize || 1));
-      group.add(buildInstances(payload.points.internal, intMat, payload.render.internalSize || 1));
-
-      function onResize() {
-        const w = container.clientWidth || window.innerWidth;
-        const h = container.clientHeight || window.innerHeight;
-        camera.aspect = w / Math.max(1, h);
-        camera.updateProjectionMatrix();
-        renderer.setSize(w, h, false);
-      }
-      onResize();
-      window.addEventListener("resize", onResize);
-
-      function animate(t) {
-        const s = t * 0.001;
-        const nearMix = 1 - ((lightDistance - 0.4) / (6 - 0.4));
-        topLight.position.set(
-          THREE.MathUtils.lerp(9.2, 1.8, nearMix),
-          6.8 + 7.6 * lightDistance,
-          5.0 + 5.8 * lightDistance
-        );
-        topLight.intensity = THREE.MathUtils.lerp(1.1, 3.8, nearMix);
-        topLight.penumbra = THREE.MathUtils.lerp(0.3, 0.55, nearMix);
-        topLight.angle = THREE.MathUtils.lerp(Math.PI * 0.2, Math.PI * 0.28, nearMix);
-        topLight.target.position.set(0, Number(payload.render.nucleusYOffset || 0), 0);
-        rimLight.position.set(-4.4 - 1.2 * lightDistance, 6.4, -7.1 - 0.9 * lightDistance);
-
-        group.rotation.y = s * 0.16;
-        renderer.render(scene, camera);
-        requestAnimationFrame(animate);
-      }
-      requestAnimationFrame(animate);
     }
-
-    function loadThreeAndStart() {
-      if (window.THREE) {
-        try { start(); } catch (err) { console.error("Shape embed failed:", err); }
-        return;
-      }
-      const script = document.createElement("script");
-      script.src = "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.min.js";
-      script.onload = () => {
-        try { start(); } catch (err) { console.error("Shape embed failed:", err); }
-      };
-      script.onerror = () => console.error("Could not load three.js.");
-      document.head.appendChild(script);
+    const mesh = new THREE.InstancedMesh(geo, mat, Math.max(1, points.length));
+    const dummy = new THREE.Object3D();
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      dummy.position.set(p[0], p[1], p[2]);
+      dummy.scale.setScalar(Number(payload.render?.externalSize ?? 1));
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
     }
+    mesh.count = points.length;
+    mesh.instanceMatrix.needsUpdate = true;
+    group.add(mesh);
+    camera.position.set(0, 0, 14);
+  }
 
-    loadThreeAndStart();
+  function onResize() {
+    const w = lockSize ? lockedWidth : (container.clientWidth || window.innerWidth);
+    const h = lockSize ? lockedHeight : (container.clientHeight || window.innerHeight);
+    camera.aspect = w / Math.max(1, h);
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h, false);
+  }
+  onResize();
+  if (!lockSize) {
+    window.addEventListener("resize", onResize);
+  }
+
+  function animate(t) {
+    const s = t * 0.001;
+    const nearMix = 1 - ((lightDistance - 0.4) / (6 - 0.4));
+    topLight.position.set(
+      THREE.MathUtils.lerp(9.2, 1.8, nearMix),
+      6.8 + 7.6 * lightDistance,
+      5.0 + 5.8 * lightDistance
+    );
+    topLight.intensity = THREE.MathUtils.lerp(1.1, 3.8, nearMix);
+    topLight.penumbra = THREE.MathUtils.lerp(0.3, 0.55, nearMix);
+    topLight.angle = THREE.MathUtils.lerp(Math.PI * 0.2, Math.PI * 0.28, nearMix);
+    topLight.target.position.set(0, Number(payload.render.nucleusYOffset || 0), 0);
+    rimLight.position.set(-4.4 - 1.2 * lightDistance, 6.4, -7.1 - 0.9 * lightDistance);
+    group.rotation.x = Number(savedRotation[0]) || 0;
+    group.rotation.y = (Number(savedRotation[1]) || 0) + s * 0.16;
+    group.rotation.z = Number(savedRotation[2]) || 0;
+    camera.lookAt(targetVec);
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+
+  (async () => {
+    try {
+      await loadEnvironment(envUrl);
+    } catch (err) {
+      console.warn("Environment load failed:", err);
+    }
+    try {
+      const loaded = await loadGlb(meshUrl);
+      if (!loaded) addFallbackPointCloud();
+    } catch (err) {
+      console.warn("GLB load failed, using fallback points:", err);
+      addFallbackPointCloud();
+    }
+    requestAnimationFrame(animate);
   })();
-  </script>
-</body>
-</html>`;
+})();
+</script>`;
 }
 
 function exportSnapshotJson() {
