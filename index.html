@@ -31,6 +31,7 @@
       <button id="reflectionImageBtn" type="button">Reflection Image</button>
       <input id="reflectionImageInput" type="file" accept=".exr,.hdr,image/*" style="display:none" />
       <button id="exportDataBtn" type="button">Export JSON</button>
+      <button id="exportConfigBtn" type="button">Export Config</button>
       <button id="exportWebflowBtn" type="button">Export Webflow HTML</button>
       <button id="saveStartupBtn" type="button">Save Startup</button>
       <button id="clearStartupBtn" type="button">Clear Startup</button>
@@ -39,10 +40,78 @@
       <input id="shapeScale" type="hidden" value="1" />
       <input id="collisionEnabled" type="hidden" value="true" />
       <div class="panel-sep">Motion</div>
-      <label for="travelSpeed">Travel Speed</label>
-      <input id="travelSpeed" type="range" min="1" max="100" step="1" value="8" />
+      <label for="creatureSelect">Creature</label>
+      <select id="creatureSelect">
+        <option value="whale">Whale</option>
+        <option value="dolphin">Dolphin</option>
+      </select>
+      <label for="movementProfile">Movement</label>
+      <select id="movementProfile">
+        <option value="linked">Linked To Creature</option>
+        <option value="whale-breach">Whale Breach</option>
+        <option value="dolphin-arc">Dolphin Arc</option>
+      </select>
       <label for="showImportedSurface">Show Imported Surface</label>
       <input id="showImportedSurface" type="checkbox" checked />
+      <label for="whaleScale">Animal Size</label>
+      <input id="whaleScale" type="range" min="0.35" max="2.8" step="0.01" value="1" />
+      <label for="whaleStartX">Animal Start X</label>
+      <input id="whaleStartX" type="range" min="-6" max="6" step="0.01" value="0" />
+      <label for="whaleStartY">Animal Start Y</label>
+      <input id="whaleStartY" type="range" min="-16" max="2" step="0.01" value="-11" />
+      <label for="whaleStartZ">Animal Start Z</label>
+      <input id="whaleStartZ" type="range" min="-6" max="6" step="0.01" value="0" />
+      <label for="whaleRotationX">Animal Rotation X</label>
+      <input id="whaleRotationX" type="range" min="-180" max="180" step="1" value="-57" />
+      <label for="whaleRotationY">Animal Rotation Y</label>
+      <input id="whaleRotationY" type="range" min="-180" max="180" step="1" value="0" />
+      <label for="whaleRotationZ">Animal Rotation Z</label>
+      <input id="whaleRotationZ" type="range" min="-180" max="180" step="1" value="0" />
+      <label for="sceneBackgroundColor">Scene Background</label>
+      <input id="sceneBackgroundColor" type="color" value="#101824" />
+      <div class="panel-sep">Particle Behavior</div>
+      <label for="particleReturnSpeed">Particle Return Speed</label>
+      <input id="particleReturnSpeed" type="range" min="0.1" max="2.5" step="0.01" value="0.65" />
+      <label for="particleFallStrength">Particle Fall Strength</label>
+      <input id="particleFallStrength" type="range" min="0" max="2.5" step="0.01" value="1.15" />
+      <label for="particleSprayGravity">Spray Gravity</label>
+      <input id="particleSprayGravity" type="range" min="4" max="40" step="0.1" value="24" />
+      <label for="particleSprayHeight">Spray Height</label>
+      <input id="particleSprayHeight" type="range" min="0.4" max="2.5" step="0.01" value="1.15" />
+      <label for="particlePierceReach">Pierce Reach</label>
+      <input id="particlePierceReach" type="range" min="0.4" max="2.5" step="0.01" value="1.25" />
+      <label for="particleCoreTightness">Pierce Tightness</label>
+      <input id="particleCoreTightness" type="range" min="0.4" max="2.5" step="0.01" value="1.2" />
+      <label for="particleColor">Particle Color</label>
+      <input id="particleColor" type="color" value="#e5f2ff" />
+      <label for="particleShape">Particle Shape</label>
+      <select id="particleShape">
+        <option value="pill">Pill</option>
+        <option value="sphere">Sphere</option>
+        <option value="cube">Cube</option>
+        <option value="square-edge">Square Edge</option>
+      </select>
+      <label for="particleThickness">Particle Thickness</label>
+      <input id="particleThickness" type="range" min="0.4" max="2.5" step="0.01" value="1" />
+      <div class="panel-sep">Waves</div>
+      <label for="waveAmplitude">Wave Amplitude</label>
+      <input id="waveAmplitude" type="range" min="0" max="3" step="0.01" value="1" />
+      <label for="waveSpeed">Wave Speed</label>
+      <input id="waveSpeed" type="range" min="0.1" max="3" step="0.01" value="1" />
+      <label for="waveAggression">Wave Aggression</label>
+      <input id="waveAggression" type="range" min="0" max="3" step="0.01" value="1" />
+      <label for="pierceRippleLead">Pierce Ripple Lead</label>
+      <input id="pierceRippleLead" type="range" min="0" max="0.6" step="0.01" value="0.18" />
+      <label for="pierceRippleStrength">Pierce Ripple Strength</label>
+      <input id="pierceRippleStrength" type="range" min="0" max="2.5" step="0.01" value="1" />
+      <label for="pierceRippleWidth">Pierce Ripple Width</label>
+      <input id="pierceRippleWidth" type="range" min="0.4" max="3" step="0.01" value="1" />
+      <label for="pierceRippleSpeed">Pierce Ripple Speed</label>
+      <input id="pierceRippleSpeed" type="range" min="0.4" max="2.5" step="0.01" value="1" />
+      <label for="pierceStart">Pierce Start</label>
+      <input id="pierceStart" type="range" min="0.4" max="1.8" step="0.01" value="1.08" />
+      <label for="tipBias">Tip Bias</label>
+      <input id="tipBias" type="range" min="0.7" max="2.2" step="0.01" value="1.4" />
       <input id="sphereColor" type="hidden" value="#90b2ff" />
       <input id="internalColor" type="hidden" value="#4f6fb6" />
       <div class="panel-sep">Nucleus Base</div>
@@ -105,24 +174,17 @@
       <label for="nucleusNoiseScale" data-shape-controls="cube">Nucleus Noise Scale</label>
       <input id="nucleusNoiseScale" data-shape-controls="cube" type="range" min="0.2" max="8" step="0.01" value="1.4" />
       <div class="panel-sep">Rendering</div>
-      <label for="internalDetailShading">Internal Shading</label>
-      <input id="internalDetailShading" type="checkbox" checked />
-      <label for="particleLighting">Particle Lighting</label>
-      <input id="particleLighting" type="checkbox" checked />
-      <label for="sphereShadows">Sphere Shadows</label>
-      <input id="sphereShadows" type="checkbox" checked />
       <label for="shadowContrast">Shadow Contrast</label>
       <input id="shadowContrast" type="range" min="0" max="2.5" step="0.01" value="1" />
-      <label for="sphereOpacity">Opacity</label>
-      <input id="sphereOpacity" type="range" min="0.05" max="1" step="0.01" value="0.95" />
-      <label for="sphereGlare">Glare</label>
-      <input id="sphereGlare" type="range" min="0" max="1" step="0.01" value="0.45" />
-      <label for="sphereMatte">Matte</label>
-      <input id="sphereMatte" type="range" min="0" max="1" step="0.01" value="0.35" />
-      <label for="internalMatte">Internal Matte</label>
-      <input id="internalMatte" type="range" min="0" max="1" step="0.01" value="0.45" />
-      <label for="sphereGlow">Glow</label>
-      <input id="sphereGlow" type="range" min="0" max="2" step="0.01" value="0.35" />
+      <input id="travelSpeed" type="hidden" value="8" />
+      <input id="internalDetailShading" type="hidden" value="true" />
+      <input id="particleLighting" type="hidden" value="true" />
+      <input id="sphereShadows" type="hidden" value="true" />
+      <input id="sphereOpacity" type="hidden" value="0.95" />
+      <input id="sphereGlare" type="hidden" value="0.45" />
+      <input id="sphereMatte" type="hidden" value="0.35" />
+      <input id="internalMatte" type="hidden" value="0.45" />
+      <input id="sphereGlow" type="hidden" value="0.35" />
     </div>
     <div id="statusLine" class="status"></div>
   </div>

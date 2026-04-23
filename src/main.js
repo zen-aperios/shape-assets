@@ -29,7 +29,35 @@ const {
   reflectionImageBtn,
   reflectionImageInput,
   shapeScaleInput,
+  creatureSelectInput,
+  movementProfileInput,
   showImportedSurfaceInput,
+  whaleScaleInput,
+  whaleStartXInput,
+  whaleStartYInput,
+  whaleStartZInput,
+  whaleRotationXInput,
+  whaleRotationYInput,
+  whaleRotationZInput,
+  sceneBackgroundColorInput,
+  particleReturnSpeedInput,
+  particleFallStrengthInput,
+  particleSprayGravityInput,
+  particleSprayHeightInput,
+  particlePierceReachInput,
+  particleCoreTightnessInput,
+  particleColorInput,
+  particleShapeInput,
+  particleThicknessInput,
+  waveAmplitudeInput,
+  waveSpeedInput,
+  waveAggressionInput,
+  pierceRippleLeadInput,
+  pierceRippleStrengthInput,
+  pierceRippleWidthInput,
+  pierceRippleSpeedInput,
+  pierceStartInput,
+  tipBiasInput,
   sphereColorInput,
   internalColorInput,
   nucleusCornerRadiusInput,
@@ -89,6 +117,7 @@ const {
   internalMatteInput,
   sphereGlowInput,
   exportDataBtn,
+  exportConfigBtn,
   exportWebflowBtn,
   saveStartupBtn,
   clearStartupBtn
@@ -103,14 +132,82 @@ function createNucleusGeometry(shape, cornerRadius) {
 
 const STARTUP_CONFIG_KEY = "shape-create.startup-config.v1";
 const EMBED_BOOTSTRAP = globalThis.__SHAPE_VIEWER_EMBED__ || null;
-const DEFAULT_STARTUP_MESH_URL = new URL("../flower.glb", import.meta.url).href;
-const DEFAULT_STARTUP_MESH_FILENAME = "flower.glb";
-const EXPORT_DEFAULT_MESH_URL = "https://cdn.jsdelivr.net/gh/zen-aperios/shape-assets@main/flower.glb";
+const DEFAULT_STARTUP_MESH_URL = new URL("../whale.glb", import.meta.url).href;
+const DEFAULT_STARTUP_MESH_FILENAME = "whale.glb";
+const DEFAULT_DOLPHIN_MESH_URL = new URL("../dolphin.glb", import.meta.url).href;
+const DEFAULT_DOLPHIN_MESH_FILENAME = "dolphin.glb";
+const EXPORT_DEFAULT_MESH_URL = "https://cdn.jsdelivr.net/gh/zen-aperios/shape-assets@main/whale.glb";
 const EXPORT_DEFAULT_ENV_URL = "https://cdn.jsdelivr.net/gh/zen-aperios/shape-assets@main/citrus_orchard_road_puresky_1k.exr";
 const EXPORT_RUNTIME_STYLES_URL = "https://cdn.jsdelivr.net/gh/zen-aperios/shape-assets@4005330/styles.css";
 const EXPORT_RUNTIME_MAIN_URL = "https://cdn.jsdelivr.net/gh/zen-aperios/shape-assets@4005330/src/main.js";
 const EMBED_STARTUP_MESH_URL = EMBED_BOOTSTRAP?.assets?.meshUrl || null;
 const EMBED_STARTUP_ENV_URL = EMBED_BOOTSTRAP?.assets?.envUrl || null;
+const CREATURE_ASSETS = {
+  whale: {
+    label: "Whale",
+    url: DEFAULT_STARTUP_MESH_URL,
+    filename: DEFAULT_STARTUP_MESH_FILENAME
+  },
+  dolphin: {
+    label: "Dolphin",
+    url: DEFAULT_DOLPHIN_MESH_URL,
+    filename: DEFAULT_DOLPHIN_MESH_FILENAME
+  }
+};
+const MOVEMENT_PROFILES = {
+  "whale-breach": {
+    label: "Whale Breach",
+    cycleSeconds: 6.2,
+    ascentSplit: 0.52,
+    ascentPow: 0.72,
+    descentPow: 1.28,
+    forcePow: 1.35,
+    breachHeight: 4.7,
+    ascentBoost: 1.35,
+    surfaceClearance: 1.15,
+    reentryMaxDepth: 1.2,
+    reentryStart: 0.72,
+    reentryEnd: 0.98,
+    descentStart: 0.38,
+    descentEnd: 0.8,
+    descentTargetScale: 0.61,
+    descentRotXDeg: -57,
+    descentRotYDeg: 51,
+    descentRotZDeg: -67,
+    arcDistance: 0,
+    arcTravelStart: 0.12,
+    arcTravelEnd: 0.86,
+    arcForwardSign: 1,
+    arcLateralAmount: 0.24,
+    piercePhaseEnd: 0.58
+  },
+  "dolphin-arc": {
+    label: "Dolphin Arc",
+    cycleSeconds: 4.6,
+    ascentSplit: 0.44,
+    ascentPow: 0.62,
+    descentPow: 1.42,
+    forcePow: 1.08,
+    breachHeight: 5.4,
+    ascentBoost: 1.6,
+    surfaceClearance: 1.35,
+    reentryMaxDepth: 1.5,
+    reentryStart: 0.68,
+    reentryEnd: 0.95,
+    descentStart: 0.3,
+    descentEnd: 0.9,
+    descentTargetScale: 0.74,
+    descentRotXDeg: -76,
+    descentRotYDeg: 24,
+    descentRotZDeg: -18,
+    arcDistance: 3.4,
+    arcTravelStart: 0.08,
+    arcTravelEnd: 0.92,
+    arcForwardSign: -1,
+    arcLateralAmount: 0.2,
+    piercePhaseEnd: 0.5
+  }
+};
 const DEFAULT_STARTUP_SNAPSHOT = {
   shape: {
     name: "custom-mesh",
@@ -123,28 +220,59 @@ const DEFAULT_STARTUP_SNAPSHOT = {
     nucleusShape: "sphere",
     nucleusCornerRadius: 0.12,
     nucleusSize: 1.1,
+    creatureType: "whale",
+    movementProfile: "linked",
     nucleusYOffset: -4.24,
+    whaleScale: 1,
+    whaleStartX: 0,
+    whaleStartY: -11,
+    whaleStartZ: 0,
+    whaleRotationX: -57,
+    whaleRotationY: 0,
+    whaleRotationZ: 0,
+    sceneBackgroundColor: "#feffff",
+    particleReturnSpeed: 0.1,
+    particleFallStrength: 2.5,
+    particleSprayGravity: 8.8,
+    particleSprayHeight: 2.5,
+    particlePierceReach: 1.23,
+    particleCoreTightness: 0.4,
+    particleColor: "#e3f6ff",
+    particleShape: "cube",
+    particleThickness: 1,
+    waveAmplitude: 3,
+    waveSpeed: 1.55,
+    waveAggression: 3,
+    pierceRippleLead: 0.35,
+    pierceRippleStrength: 1,
+    pierceRippleWidth: 1,
+    pierceRippleSpeed: 1,
+    pierceStart: 1.08,
+    tipBias: 1.4,
     lightDistance: 6,
-    nucleusColor: "#979c98",
+    nucleusColor: "#e5f5f2",
     nucleusOpacity: 1,
+    nucleusGlare: 0.97,
+    nucleusMatte: 0,
+    nucleusGlow: 1.68,
     nucleusTransmission: 1,
-    nucleusThickness: 0,
+    nucleusThickness: 6,
     nucleusAttenuationColor: "#000000",
     nucleusAttenuationDistance: 19.2,
     nucleusSpecular: 1,
-    nucleusSpecularColor: "#00f6ff",
-    nucleusClearcoat: 0.86,
+    nucleusSpecularColor: "#00d2f7",
+    nucleusClearcoat: 1,
     nucleusClearcoatRoughness: 1,
     nucleusIridescence: 1,
     nucleusIor: 2.333,
     nucleusEnvIntensity: 3.2,
-    nucleusReflectTint: "#000000",
-    nucleusReflectTintMix: 0.1,
+    nucleusReflectTint: "#00e0ff",
+    nucleusReflectTintMix: 0.49,
     surfaceChroma: 1,
-    reflectionStrength: 4,
+    reflectionStrength: 3.85,
     nucleusRimStrength: 2.5,
     nucleusRimPower: 8,
-    nucleusRimColor: "#000000",
+    nucleusRimColor: "#00fbf8",
     nucleusNoiseAmount: 0.2,
     nucleusNoiseScale: 1.4,
     nucleusShellMode: false,
@@ -172,6 +300,335 @@ const DEFAULT_STARTUP_SNAPSHOT = {
     opacity: 0.95
   }
 };
+const DEFAULT_STARTUP_SCENE_STATE = {
+  cameraPosition: [15.303946293255809, -3.7515814655347155, -0.691258884914884],
+  controlsTarget: [0, 0, 0],
+  cameraZoom: 1,
+  groupRotation: [0, 0, 0]
+};
+const CAPSULE_COUNT_X = 180;
+const CAPSULE_COUNT_Z = 120;
+const CAPSULE_SPACING = 0.272;
+const CAPSULE_COUNT = CAPSULE_COUNT_X * CAPSULE_COUNT_Z;
+const BREACH_CYCLE_SECONDS = 6.2;
+const BREACH_HEIGHT = 4.7;
+const BREACH_ASCENT_BOOST = 1.35;
+const BREACH_SURFACE_CLEARANCE = 1.15;
+const BREACH_REENTRY_MAX_DEPTH = 1.2;
+const DESCENT_TARGET_SCALE = 0.61;
+const DESCENT_TARGET_ROT_X_DEG = -57;
+const DESCENT_TARGET_ROT_Y_DEG = 51;
+const DESCENT_TARGET_ROT_Z_DEG = -67;
+const LANDING_SCATTER_COUNT = 14;
+const WHALE_CONTACT_PROBE_COUNT = 11;
+const WHALE_PRECONTACT_MARGIN = 1.08;
+const RIPPLE_MAX_COUNT = 18;
+const RIPPLE_LIFETIME = 2.6;
+const RIPPLE_EXPANSION_SPEED = 4.2;
+const SPRAY_PARTICLE_COUNT = 420;
+const SPRAY_GRAVITY = 24.0;
+const SURFACE_BASE_Y = -1.1;
+
+function buildCapsuleField() {
+  const points = [];
+  const halfX = ((CAPSULE_COUNT_X - 1) * CAPSULE_SPACING) / 2;
+  const halfZ = ((CAPSULE_COUNT_Z - 1) * CAPSULE_SPACING) / 2;
+
+  for (let ix = 0; ix < CAPSULE_COUNT_X; ix++) {
+    for (let iz = 0; iz < CAPSULE_COUNT_Z; iz++) {
+      const rowOffset = iz % 2 === 0 ? CAPSULE_SPACING * 0.5 : 0;
+      const jitterScale = CAPSULE_SPACING * 0.42;
+      const lowFreq =
+        Math.sin(ix * 0.33) * 0.22 +
+        Math.cos(iz * 0.27) * 0.18 +
+        Math.sin((ix + iz) * 0.11) * 0.14;
+      const x = ix * CAPSULE_SPACING - halfX + rowOffset + (Math.random() * 2 - 1) * jitterScale + lowFreq * 0.08;
+      const z = iz * CAPSULE_SPACING - halfZ + (Math.random() * 2 - 1) * jitterScale + lowFreq * 0.1;
+      const radial = Math.sqrt(x * x + z * z);
+      points.push({
+        x,
+        z,
+        radial,
+        waveOffset: Math.random() * Math.PI * 2,
+        drift: Math.random() * 0.18 + 0.06,
+        scale: 0.5 + Math.random() * 1.15,
+        cluster: 0.7 + Math.random() * 0.9 + Math.max(0, lowFreq) * 0.45
+      });
+    }
+  }
+
+  return points;
+}
+
+function smoothPulse(t) {
+  return 0.5 - 0.5 * Math.cos(Math.PI * 2 * t);
+}
+
+function rebuildWhaleContactProbesFromBox(box) {
+  whaleContactProbes.length = 0;
+  if (!box || box.isEmpty()) return;
+
+  const min = box.min;
+  const max = box.max;
+  const size = tempPointA.subVectors(max, min);
+  if (size.lengthSq() <= 0.000001) return;
+
+  const addProbe = (x, y, z, weight = 1, role = "body") => {
+    whaleContactProbes.push({
+      local: new THREE.Vector3(x, y, z),
+      world: new THREE.Vector3(),
+      prevWorld: new THREE.Vector3(),
+      prevSignedDistance: null,
+      cooldown: 0,
+      weight,
+      role
+    });
+  };
+
+  const floorY = min.y + size.y * 0.12;
+  for (let i = 0; i < WHALE_CONTACT_PROBE_COUNT; i++) {
+    const t = i / Math.max(1, WHALE_CONTACT_PROBE_COUNT - 1);
+    const bodyBias = Math.sin(t * Math.PI);
+    const x = THREE.MathUtils.lerp(min.x + size.x * 0.08, max.x - size.x * 0.1, t);
+    const y = floorY + size.y * (0.06 + bodyBias * 0.08);
+    const sideWidth = size.z * (0.05 + bodyBias * 0.18);
+    const noseBias = Math.pow(t, 1.9);
+    const weight = 0.78 + bodyBias * 0.82 + noseBias * 0.95;
+
+    addProbe(x, y, 0, weight, t > 0.78 ? "front" : "body");
+    if (sideWidth > size.z * 0.08 && i > 0 && i < WHALE_CONTACT_PROBE_COUNT - 1) {
+      addProbe(x, y + size.y * 0.015, sideWidth, weight * 0.85, "side");
+      addProbe(x, y + size.y * 0.015, -sideWidth, weight * 0.85, "side");
+    }
+  }
+
+  const tipX = max.x + size.x * 0.04;
+  const tipY = min.y + size.y * 0.22;
+  addProbe(tipX, tipY, 0, 3.85, "tip");
+  addProbe(max.x + size.x * 0.015, tipY - size.y * 0.035, size.z * 0.05, 2.6, "tip");
+  addProbe(max.x + size.x * 0.015, tipY - size.y * 0.035, -size.z * 0.05, 2.6, "tip");
+  const noseX = max.x - size.x * 0.002;
+  const noseY = min.y + size.y * 0.18;
+  addProbe(noseX, noseY, 0, 3.25, "nose");
+  addProbe(max.x - size.x * 0.02, noseY + size.y * 0.06, size.z * 0.082, 2.35, "nose");
+  addProbe(max.x - size.x * 0.02, noseY + size.y * 0.06, -size.z * 0.082, 2.35, "nose");
+  addProbe(max.x - size.x * 0.06, min.y + size.y * 0.19, 0, 2.4, "front");
+  addProbe(min.x + size.x * 0.56, min.y + size.y * 0.1, 0, 1.85, "belly");
+  addProbe(min.x + size.x * 0.68, min.y + size.y * 0.105, 0, 1.65, "belly");
+
+  for (let i = 0; i < whaleContactProbes.length; i++) {
+    const probe = whaleContactProbes[i];
+    probe.world.copy(probe.local);
+    probe.prevWorld.copy(probe.local);
+  }
+}
+
+function emitRipple(x, z, strength, elapsed, options = {}) {
+  return;
+}
+
+function updateActiveRipples(elapsed) {
+  for (let i = activeRipples.length - 1; i >= 0; i--) {
+    const ripple = activeRipples[i];
+    if (elapsed - ripple.startTime > ripple.life) activeRipples.splice(i, 1);
+  }
+}
+
+function emitSprayBurst(origin, forward, lateral, upwardSpeed, spread, count, strength) {
+  const sprayHeight = Math.max(0.4, materialControls.particleSprayHeight ?? 1.15);
+  for (let i = 0; i < count; i++) {
+    const particle = sprayParticleState[nextSprayParticleIndex];
+    nextSprayParticleIndex = (nextSprayParticleIndex + 1) % SPRAY_PARTICLE_COUNT;
+    const lofted = Math.random() < 0.18;
+    const distanceSprout = Math.random() < 0.16;
+    const lateralMix = (Math.random() * 2 - 1) * spread;
+    const forwardMix = distanceSprout
+      ? 1.7 + Math.random() * 1.8
+      : lofted
+        ? 0.65 + Math.random() * 0.9
+        : 1.1 + Math.random() * 1.45;
+    const upwardMix = upwardSpeed * (
+      distanceSprout
+        ? (0.9 + Math.random() * 0.5) * sprayHeight
+        : lofted
+          ? (0.8 + Math.random() * 0.45) * sprayHeight
+          : (0.24 + Math.random() * 0.34) * THREE.MathUtils.lerp(0.92, 1.18, Math.min(1, sprayHeight - 0.4))
+    );
+    particle.active = true;
+    particle.position.copy(origin);
+    particle.position.x += lateral.x * lateralMix * 0.22;
+    particle.position.z += lateral.z * lateralMix * 0.22;
+    particle.position.y += Math.random() * 0.12;
+    particle.velocity.copy(forward).multiplyScalar(forwardMix * strength);
+    particle.velocity.addScaledVector(lateral, lateralMix * (distanceSprout ? 1.8 : lofted ? 0.95 : 1.45));
+    particle.velocity.y = upwardMix;
+    particle.initialVelocityY = upwardMix;
+    particle.life = 0;
+    particle.maxLife = distanceSprout
+      ? 1.1 + Math.random() * 0.6
+      : lofted
+        ? 0.62 + Math.random() * 0.34
+        : 0.26 + Math.random() * 0.22;
+    particle.scale = (distanceSprout ? 0.045 : lofted ? 0.05 : 0.04) + Math.random() * 0.07 + strength * 0.008;
+    particle.spin = Math.random() * Math.PI * 2;
+    particle.spinSpeed = (Math.random() * 2 - 1) * (
+      distanceSprout
+        ? 3.5 + strength * 1.8
+        : lofted
+          ? 4 + strength * 2.4
+          : 6 + strength * 3.2
+    );
+  }
+}
+
+function updateSprayParticles(dt, surfaceY) {
+  const sprayGravity = Math.max(0, materialControls.particleSprayGravity ?? SPRAY_GRAVITY);
+  for (let i = 0; i < sprayParticleState.length; i++) {
+    const particle = sprayParticleState[i];
+    if (!particle.active) {
+      sprayDummy.position.set(0, -999, 0);
+      sprayDummy.scale.setScalar(0.0001);
+      sprayDummy.updateMatrix();
+      sprayParticles.setMatrixAt(i, sprayDummy.matrix);
+      continue;
+    }
+
+    particle.life += dt;
+    const ageMix = Math.min(1, particle.life / particle.maxLife);
+    const releaseMix = Math.min(1, ageMix * 1.6);
+    particle.velocity.y *= 1 - Math.min(0.3, dt * (1.8 + releaseMix * 7.2));
+    particle.velocity.y -= sprayGravity * dt;
+    particle.velocity.multiplyScalar(1 - Math.min(0.28, dt * (1.2 + ageMix * 1.8)));
+    particle.position.addScaledVector(particle.velocity, dt);
+    particle.spin += particle.spinSpeed * dt;
+
+    const impactSurfaceY = surfaceY + SURFACE_BASE_Y + 0.05;
+    if (particle.position.y <= impactSurfaceY || particle.life >= 2.6) {
+      particle.active = false;
+      sprayDummy.position.set(0, -999, 0);
+      sprayDummy.scale.setScalar(0.0001);
+      sprayDummy.updateMatrix();
+      sprayParticles.setMatrixAt(i, sprayDummy.matrix);
+      continue;
+    }
+
+    const shrink = 1 - Math.pow(ageMix, 1.25);
+    sprayDummy.position.copy(particle.position);
+    sprayDummy.rotation.set(particle.spin, particle.spin * 0.6, particle.spin * 0.35);
+    sprayDummy.scale.setScalar(particle.scale * shrink);
+    sprayDummy.updateMatrix();
+    sprayParticles.setMatrixAt(i, sprayDummy.matrix);
+  }
+
+  sprayParticles.instanceMatrix.needsUpdate = true;
+}
+
+function updateWhaleWaterContactRipples(
+  surfaceY,
+  dt,
+  elapsed,
+  landingImpact,
+  breachPhase,
+  breachCycle,
+  piercePhaseEnd = 0.58
+) {
+  if (!importSurfaceGroup.visible || !whaleContactProbes.length) return;
+  const piercePhaseActive = breachPhase <= THREE.MathUtils.clamp(piercePhaseEnd, 0.2, 0.85);
+  const pierceAvailable = activePierceCycle !== breachCycle;
+  const pierceRippleLead = THREE.MathUtils.clamp(materialControls.pierceRippleLead ?? 0.18, 0, 0.6);
+  const pierceRippleStrength = Math.max(0, materialControls.pierceRippleStrength ?? 1);
+  const pierceRippleWidth = Math.max(0.4, materialControls.pierceRippleWidth ?? 1);
+  const pierceRippleSpeed = Math.max(0.4, materialControls.pierceRippleSpeed ?? 1);
+  tempPointB.set(1, 0, 0).applyEuler(importSurfaceGroup.rotation).setY(0);
+  if (tempPointB.lengthSq() < 0.0001) tempPointB.set(1, 0, 0);
+  else tempPointB.normalize();
+  tempPointC.set(-tempPointB.z, 0, tempPointB.x);
+
+  for (let i = 0; i < whaleContactProbes.length; i++) {
+    const probe = whaleContactProbes[i];
+    probe.cooldown = Math.max(0, probe.cooldown - dt);
+    probe.world.copy(probe.local);
+    importSurfaceGroup.localToWorld(probe.world);
+    const signedDistance = probe.world.y - surfaceY;
+    const probeVelocityY = dt > 0.000001 ? (probe.world.y - probe.prevWorld.y) / dt : 0;
+    const downwardSpeed = Math.max(0, -probeVelocityY);
+    const pierceStart = THREE.MathUtils.clamp(materialControls.pierceStart ?? WHALE_PRECONTACT_MARGIN, 0.4, 1.8);
+    const tipBias = THREE.MathUtils.clamp(materialControls.tipBias ?? 1.4, 0.7, 2.2);
+    const precontactMargin =
+      probe.role === "tip" ? pierceStart * tipBias :
+      probe.role === "nose" ? pierceStart * THREE.MathUtils.lerp(0.95, 1.15, Math.min(1, (tipBias - 0.7) / 1.5)) :
+      probe.role === "front" ? pierceStart * 0.92 :
+      probe.role === "belly" ? pierceStart * 0.42 :
+      0.08;
+    const wasAboveWater = probe.prevSignedDistance !== null && probe.prevSignedDistance > precontactMargin * 0.12;
+    const isSubmerged = signedDistance <= -0.03;
+    const isPrecontact =
+      signedDistance <= precontactMargin &&
+      probe.prevSignedDistance !== null &&
+      probe.prevSignedDistance > signedDistance;
+    const tipApproachTrigger =
+      probe.role === "tip" &&
+      probe.prevSignedDistance !== null &&
+      signedDistance <= precontactMargin * 0.9 &&
+      probe.prevSignedDistance > signedDistance &&
+      downwardSpeed > 0.02;
+    const isContacting = isSubmerged || isPrecontact;
+
+    if (
+      piercePhaseActive &&
+      pierceAvailable &&
+      probe.cooldown <= 0 &&
+      (
+        (wasAboveWater && isContacting && downwardSpeed > (probe.role === "tip" ? 0.08 : 0.16)) ||
+        tipApproachTrigger
+      )
+    ) {
+      activePierceCycle = breachCycle;
+      const contactDepth = isSubmerged ? -signedDistance : Math.max(0, precontactMargin - signedDistance);
+      const depthBoost = THREE.MathUtils.clamp(contactDepth * (isSubmerged ? 0.75 : 0.52), 0, 0.55);
+      const noseBoost =
+        probe.role === "tip" ? 1.9 :
+        probe.role === "nose" ? 1.45 :
+        probe.role === "front" ? 1.18 :
+        probe.role === "belly" ? 1.12 :
+        1.0;
+      const strength = THREE.MathUtils.clamp(
+        (downwardSpeed * 0.075 + depthBoost + landingImpact * 0.32) * probe.weight * noseBoost,
+        0.14,
+        2.4
+      ) * pierceRippleStrength;
+      emitRipple(probe.world.x, probe.world.z, strength, elapsed, {
+        life: 1.05,
+        width: THREE.MathUtils.lerp(0.95, 1.95, Math.min(1, probe.weight / 1.9)) * pierceRippleWidth,
+        wavelength: THREE.MathUtils.lerp(1.0, 1.65, Math.min(1, probe.weight / 1.9)),
+        speed: THREE.MathUtils.lerp(3.2, 4.4, Math.min(1, downwardSpeed * 0.12)) * pierceRippleSpeed,
+        push: (0.18 + probe.weight * 0.08) * THREE.MathUtils.lerp(0.7, 1.25, Math.min(1, pierceRippleStrength / 2.5)),
+        ageOffset: (probe.role === "tip" ? 0.3 : probe.role === "nose" ? 0.24 : 0.18) + pierceRippleLead
+      });
+      const sprayStrength =
+        strength * (probe.role === "tip" ? 1.08 : probe.role === "nose" ? 0.92 : probe.role === "front" ? 0.72 : 0.48);
+      const sprayCount =
+        probe.role === "tip" ? 34 :
+        probe.role === "nose" ? 28 :
+        probe.role === "front" ? 20 :
+        probe.role === "belly" ? 14 :
+        10;
+      emitSprayBurst(
+        probe.world,
+        tempPointB,
+        tempPointC,
+        (probe.role === "tip" ? 4.8 : probe.role === "nose" ? 4.2 : probe.role === "front" ? 3.6 : 3.2) + downwardSpeed * 0.24,
+        probe.role === "tip" ? 3.5 : probe.role === "nose" ? 3.1 : probe.role === "front" ? 2.35 : 1.85,
+        sprayCount,
+        (probe.role === "tip" ? 3.15 : probe.role === "nose" ? 2.8 : probe.role === "front" ? 2.5 : 2.3) + sprayStrength * 0.7
+      );
+      probe.cooldown = probe.role === "tip" ? 0.06 : isSubmerged ? 0.16 : 0.1;
+    }
+
+    probe.prevSignedDistance = signedDistance;
+    probe.prevWorld.copy(probe.world);
+  }
+}
 
 function applySnapshotDefaultsToInputs(snapshot) {
   if (!snapshot) return;
@@ -179,6 +636,8 @@ function applySnapshotDefaultsToInputs(snapshot) {
   const map = {
     shapeSelect: shape.name,
     shapeScale: shape.scale,
+    creatureSelect: render.creatureType,
+    movementProfile: render.movementProfile,
     sphereColor: render.externalColor,
     internalColor: render.internalColor,
     nucleusPreset: render.nucleusPreset,
@@ -186,6 +645,32 @@ function applySnapshotDefaultsToInputs(snapshot) {
     nucleusCornerRadius: render.nucleusCornerRadius,
     nucleusSize: render.nucleusSize,
     nucleusYOffset: render.nucleusYOffset,
+    whaleScale: render.whaleScale,
+    whaleStartX: render.whaleStartX,
+    whaleStartY: render.whaleStartY,
+    whaleStartZ: render.whaleStartZ,
+    whaleRotationX: render.whaleRotationX,
+    whaleRotationY: render.whaleRotationY,
+    whaleRotationZ: render.whaleRotationZ,
+    sceneBackgroundColor: render.sceneBackgroundColor,
+    particleReturnSpeed: render.particleReturnSpeed,
+    particleFallStrength: render.particleFallStrength,
+    particleSprayGravity: render.particleSprayGravity,
+    particleSprayHeight: render.particleSprayHeight,
+    particlePierceReach: render.particlePierceReach,
+    particleCoreTightness: render.particleCoreTightness,
+    particleColor: render.particleColor,
+    particleShape: render.particleShape,
+    particleThickness: render.particleThickness,
+    waveAmplitude: render.waveAmplitude,
+    waveSpeed: render.waveSpeed,
+    waveAggression: render.waveAggression,
+    pierceRippleLead: render.pierceRippleLead,
+    pierceRippleStrength: render.pierceRippleStrength,
+    pierceRippleWidth: render.pierceRippleWidth,
+    pierceRippleSpeed: render.pierceRippleSpeed,
+    pierceStart: render.pierceStart,
+    tipBias: render.tipBias,
     lightDistance: render.lightDistance,
     nucleusColor: render.nucleusColor,
     nucleusOpacity: render.nucleusOpacity,
@@ -306,7 +791,10 @@ const loadedEmbeddedStartup =
     ? applyStartupConfigToInputs(EMBED_BOOTSTRAP.startupConfig)
     : false;
 const loadedUserStartup = loadedEmbeddedStartup || loadStartupConfigIntoInputs();
-if (!loadedUserStartup) applySnapshotDefaultsToInputs(DEFAULT_STARTUP_SNAPSHOT);
+if (!loadedUserStartup) {
+  applySnapshotDefaultsToInputs(DEFAULT_STARTUP_SNAPSHOT);
+  loadedStartupSceneState = DEFAULT_STARTUP_SCENE_STATE;
+}
 
 const FIXED_EXTERNAL_SIZE = 1;
 const FIXED_INTERNAL_SIZE = 0.9;
@@ -329,6 +817,9 @@ function clearImportedSurface() {
     child.geometry?.dispose?.();
     importSurfaceGroup.remove(child);
   }
+  whaleContactProbes.length = 0;
+  activeRipples.length = 0;
+  for (let i = 0; i < sprayParticleState.length; i++) sprayParticleState[i].active = false;
 }
 
 function syncImportedSurfaceMaterials() {
@@ -412,6 +903,8 @@ function buildImportedSurface(root) {
     for (let i = 0; i < sourceGeometries.length; i++) sourceGeometries[i].dispose?.();
   }
   ensureGeometryUvForThicknessMap(mergedGeometry);
+  mergedGeometry.computeBoundingBox();
+  if (mergedGeometry.boundingBox) rebuildWhaleContactProbesFromBox(mergedGeometry.boundingBox);
 
   const baseMesh = new THREE.Mesh(markLiquidGeometry(mergedGeometry), importedSurfaceMaterial);
   baseMesh.position.set(0, 0, 0);
@@ -698,6 +1191,62 @@ reflectionSceneryGroup.visible = false;
 const group = new THREE.Group();
 group.position.set(0, 0, 0);
 scene.add(group);
+const capsuleField = buildCapsuleField();
+const capsuleFloorGroup = new THREE.Group();
+group.add(capsuleFloorGroup);
+const PARTICLE_GEOMETRIES = {
+  pill: new THREE.CapsuleGeometry(0.08, 0.3, 6, 10),
+  sphere: new THREE.SphereGeometry(0.13, 14, 10),
+  cube: new THREE.BoxGeometry(0.22, 0.22, 0.22),
+  "square-edge": new THREE.BoxGeometry(0.18, 0.42, 0.18)
+};
+const capsuleMaterial = new THREE.MeshPhysicalMaterial({
+  color: new THREE.Color("#e5f2ff"),
+  emissive: new THREE.Color("#82cfff"),
+  emissiveIntensity: 0.14,
+  roughness: 0.22,
+  metalness: 0.05,
+  clearcoat: 0.6,
+  clearcoatRoughness: 0.2
+});
+const capsules = new THREE.InstancedMesh(PARTICLE_GEOMETRIES.pill, capsuleMaterial, CAPSULE_COUNT);
+capsules.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+capsuleFloorGroup.add(capsules);
+const capsuleDummy = new THREE.Object3D();
+const capsuleSmoothX = new Float32Array(CAPSULE_COUNT);
+const capsuleSmoothY = new Float32Array(CAPSULE_COUNT);
+const capsuleSmoothZ = new Float32Array(CAPSULE_COUNT);
+const capsuleFallVelocityY = new Float32Array(CAPSULE_COUNT);
+let capsuleSmoothReady = false;
+const whaleSurfaceLocal = new THREE.Vector3();
+const sprayGeometry = new THREE.IcosahedronGeometry(0.08, 1);
+const sprayMaterial = new THREE.MeshPhysicalMaterial({
+  color: new THREE.Color("#e9f6ff"),
+  emissive: new THREE.Color("#9bd7ff"),
+  emissiveIntensity: 0.22,
+  roughness: 0.2,
+  metalness: 0.0,
+  clearcoat: 0.34,
+  transparent: true,
+  opacity: 0.96
+});
+const sprayParticles = new THREE.InstancedMesh(sprayGeometry, sprayMaterial, SPRAY_PARTICLE_COUNT);
+sprayParticles.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+sprayParticles.count = SPRAY_PARTICLE_COUNT;
+group.add(sprayParticles);
+const sprayParticleState = Array.from({ length: SPRAY_PARTICLE_COUNT }, () => ({
+  active: false,
+  position: new THREE.Vector3(),
+  velocity: new THREE.Vector3(),
+  initialVelocityY: 0,
+  life: 0,
+  maxLife: 1,
+  scale: 0.1,
+  spin: Math.random() * Math.PI * 2,
+  spinSpeed: (Math.random() * 2 - 1) * 6
+}));
+let nextSprayParticleIndex = 0;
+const sprayDummy = new THREE.Object3D();
 function makeRotationTestLabel(text) {
   const canvas = document.createElement("canvas");
   canvas.width = 1024;
@@ -728,8 +1277,7 @@ function makeRotationTestLabel(text) {
   plane.renderOrder = -200;
   return plane;
 }
-const rotationTestLabel = makeRotationTestLabel("ROTATION TEST");
-if (rotationTestLabel) scene.add(rotationTestLabel);
+const rotationTestLabel = null;
 const importSurfaceGroup = new THREE.Group();
 group.add(importSurfaceGroup);
 const contactShadowPlane = new THREE.Mesh(
@@ -810,6 +1358,7 @@ const importedSurfaceMaterial = new THREE.MeshPhysicalMaterial({
   alphaHash: false,
   thicknessMap: importedThicknessTexture
 });
+let importedSurfaceBaseOpacity = importedSurfaceMaterial.opacity;
 const nucleusRimMaterial = new THREE.ShaderMaterial({
   uniforms: {
     uColor: { value: new THREE.Color(nucleusRimColorInput?.value || "#cfe3ff") },
@@ -952,8 +1501,36 @@ const materialControls = {
   nucleusShape: FIXED_NUCLEUS_SHAPE,
   nucleusPreset: FIXED_NUCLEUS_PRESET,
   nucleusSize: FIXED_NUCLEUS_SIZE,
+  creatureType: creatureSelectInput?.value || "whale",
+  movementProfile: movementProfileInput?.value || "linked",
   nucleusCornerRadius: Number(nucleusCornerRadiusInput?.value ?? 0.12),
   nucleusYOffset: Number(nucleusYOffsetInput?.value ?? 0),
+  whaleScale: Number(whaleScaleInput?.value ?? 1),
+  whaleStartX: Number(whaleStartXInput?.value ?? 0),
+  whaleStartY: Number(whaleStartYInput?.value ?? -11),
+  whaleStartZ: Number(whaleStartZInput?.value ?? 0),
+  whaleRotationX: Number(whaleRotationXInput?.value ?? 0),
+  whaleRotationY: Number(whaleRotationYInput?.value ?? 0),
+  whaleRotationZ: Number(whaleRotationZInput?.value ?? 0),
+  sceneBackgroundColor: sceneBackgroundColorInput?.value || "#101824",
+  particleReturnSpeed: Number(particleReturnSpeedInput?.value ?? 0.65),
+  particleFallStrength: Number(particleFallStrengthInput?.value ?? 1.15),
+  particleSprayGravity: Number(particleSprayGravityInput?.value ?? 24),
+  particleSprayHeight: Number(particleSprayHeightInput?.value ?? 1.15),
+  particlePierceReach: Number(particlePierceReachInput?.value ?? 1.25),
+  particleCoreTightness: Number(particleCoreTightnessInput?.value ?? 1.2),
+  particleColor: particleColorInput?.value || "#e5f2ff",
+  particleShape: particleShapeInput?.value || "pill",
+  particleThickness: Number(particleThicknessInput?.value ?? 1),
+  waveAmplitude: Number(waveAmplitudeInput?.value ?? 1),
+  waveSpeed: Number(waveSpeedInput?.value ?? 1),
+  waveAggression: Number(waveAggressionInput?.value ?? 1),
+  pierceRippleLead: Number(pierceRippleLeadInput?.value ?? 0.18),
+  pierceRippleStrength: Number(pierceRippleStrengthInput?.value ?? 1),
+  pierceRippleWidth: Number(pierceRippleWidthInput?.value ?? 1),
+  pierceRippleSpeed: Number(pierceRippleSpeedInput?.value ?? 1),
+  pierceStart: Number(pierceStartInput?.value ?? WHALE_PRECONTACT_MARGIN),
+  tipBias: Number(tipBiasInput?.value ?? 1.4),
   lightDistance: Number(lightDistanceInput?.value ?? 1),
   nucleusColor: nucleusColorInput?.value || "#a8d8ff",
   nucleusOpacity: Number(nucleusOpacityInput?.value ?? 0.95),
@@ -1111,7 +1688,8 @@ function syncNucleusMesh() {
   nucleusMesh.visible = nucleusVisibleOnStartup;
   nucleusMesh.renderOrder = 20;
   nucleusMesh.position.set(0, materialControls.nucleusYOffset, 0);
-  importSurfaceGroup.position.y = materialControls.nucleusYOffset;
+  importSurfaceGroup.position.y = materialControls.nucleusYOffset + (materialControls.whaleStartY ?? -11);
+  capsuleFloorGroup.position.y = materialControls.nucleusYOffset;
   nucleusMesh.scale.setScalar(Math.max(0.05, materialControls.nucleusSize));
   if (nucleusShellMeshes.length) {
     const layerCount = Math.max(1, nucleusShellMeshes.length);
@@ -1153,7 +1731,8 @@ function forceApplyNucleusYOffset() {
   if (!Number.isFinite(y)) return;
   materialControls.nucleusYOffset = y;
   if (nucleusMesh) nucleusMesh.position.set(0, y, 0);
-  importSurfaceGroup.position.y = y;
+  importSurfaceGroup.position.y = y + (materialControls.whaleStartY ?? -11);
+  capsuleFloorGroup.position.y = y;
   if (nucleusShellMeshes.length) {
     for (let i = 0; i < nucleusShellMeshes.length; i++) {
       nucleusShellMeshes[i].position.y = y;
@@ -1372,9 +1951,69 @@ async function loadCustomMeshFromUrl(url, filename = DEFAULT_STARTUP_MESH_FILENA
   }
 }
 
+function getCreatureType(value) {
+  return value === "dolphin" ? "dolphin" : "whale";
+}
+
+function getCreatureAsset(creatureType) {
+  return CREATURE_ASSETS[getCreatureType(creatureType)] || CREATURE_ASSETS.whale;
+}
+
+function getResolvedMovementProfileKey() {
+  const selected = materialControls.movementProfile || "linked";
+  if (selected === "linked") {
+    return getCreatureType(materialControls.creatureType) === "dolphin"
+      ? "dolphin-arc"
+      : "whale-breach";
+  }
+  return MOVEMENT_PROFILES[selected] ? selected : "whale-breach";
+}
+
+function getActiveMovementProfile() {
+  const key = getResolvedMovementProfileKey();
+  return MOVEMENT_PROFILES[key] || MOVEMENT_PROFILES["whale-breach"];
+}
+
+let creatureLoadToken = 0;
+async function loadCreatureMesh(creatureType, statusPrefix) {
+  const normalized = getCreatureType(creatureType);
+  const asset = getCreatureAsset(normalized);
+  const token = ++creatureLoadToken;
+  const loaded = await loadCustomMeshFromUrl(
+    asset.url,
+    asset.filename,
+    statusPrefix || `${asset.label} loaded`
+  );
+  if (token !== creatureLoadToken) return false;
+  if (!loaded) return false;
+  materialControls.creatureType = normalized;
+  if (normalized === "dolphin") {
+    const minScale = Number(whaleScaleInput?.min ?? 0.35);
+    materialControls.whaleScale = minScale;
+    setControlValue(whaleScaleInput, minScale);
+  }
+  if (creatureSelectInput && creatureSelectInput.value !== normalized) {
+    creatureSelectInput.value = normalized;
+  }
+  return true;
+}
+
 function applyMaterialControls() {
   const sphereShadowsEnabled = sphereShadowsInput?.checked ?? true;
   const shadowContrast = THREE.MathUtils.clamp(materialControls.shadowContrast ?? 1, 0, 2.5);
+  scene.background = new THREE.Color(materialControls.sceneBackgroundColor || "#101824");
+  renderer.setClearColor(materialControls.sceneBackgroundColor || "#101824", 1);
+  const particleColor = new THREE.Color(materialControls.particleColor || "#e5f2ff");
+  const particleShape = materialControls.particleShape || "pill";
+  const particleEmissive = particleColor.clone().lerp(new THREE.Color("#82cfff"), 0.38);
+  const targetParticleGeometry = PARTICLE_GEOMETRIES[particleShape] || PARTICLE_GEOMETRIES.pill;
+  if (capsules.geometry !== targetParticleGeometry) capsules.geometry = targetParticleGeometry;
+  capsuleMaterial.color.copy(particleColor);
+  capsuleMaterial.emissive.copy(particleEmissive);
+  sprayMaterial.color.copy(particleColor).lerp(new THREE.Color("#ffffff"), 0.16);
+  sprayMaterial.emissive.copy(particleEmissive);
+  capsuleMaterial.needsUpdate = true;
+  sprayMaterial.needsUpdate = true;
   contactShadowPlane.material.opacity = 0;
   const nucleusTransmission = THREE.MathUtils.clamp(materialControls.nucleusTransmission ?? 0.18, 0, 1);
   const nucleusTintMix = THREE.MathUtils.clamp(materialControls.nucleusReflectTintMix ?? 0, 0, 1);
@@ -1534,6 +2173,7 @@ function applyMaterialControls() {
 
   // Keep color control visibly responsive while preserving a glassy highlight lift.
   importedSurfaceMaterial.color.copy(finalNucleusColor).lerp(new THREE.Color("#f6fbff"), 0.22);
+  importedSurfaceBaseOpacity = importedOpacity;
   importedSurfaceMaterial.opacity = importedOpacity;
   importedSurfaceMaterial.transmission = physicalTransmission;
   importedSurfaceMaterial.roughness = glassRoughness;
@@ -1830,6 +2470,24 @@ internalColorInput?.addEventListener("input", (e) => {
   materialControls.internalColor = e.target.value;
   applyMaterialControls();
 });
+creatureSelectInput?.addEventListener("change", async (e) => {
+  const requestedType = getCreatureType(e.target.value);
+  materialControls.creatureType = requestedType;
+  const loaded = await loadCreatureMesh(requestedType, `${getCreatureAsset(requestedType).label} loaded`);
+  if (loaded) {
+    setStatus(
+      materialControls.movementProfile === "linked"
+        ? `${getCreatureAsset(requestedType).label} loaded (${getActiveMovementProfile().label} motion).`
+        : `${getCreatureAsset(requestedType).label} loaded.`
+    );
+  } else {
+    setStatus(`Could not load ${requestedType} mesh.`, true);
+  }
+});
+movementProfileInput?.addEventListener("change", (e) => {
+  materialControls.movementProfile = e.target.value || "linked";
+  setStatus(`Movement profile: ${getActiveMovementProfile().label}`);
+});
 nucleusCornerRadiusInput?.addEventListener("input", (e) => {
   materialControls.nucleusCornerRadius = Number(e.target.value);
   markNucleusPresetCustom();
@@ -1839,7 +2497,109 @@ nucleusYOffsetInput?.addEventListener("input", (e) => {
   materialControls.nucleusYOffset = Number(e.target.value);
   markNucleusPresetCustom();
   if (nucleusMesh) nucleusMesh.position.y = materialControls.nucleusYOffset;
-  importSurfaceGroup.position.y = materialControls.nucleusYOffset;
+  importSurfaceGroup.position.y = materialControls.nucleusYOffset + (materialControls.whaleStartY ?? -11);
+  capsuleFloorGroup.position.y = materialControls.nucleusYOffset;
+});
+whaleScaleInput?.addEventListener("input", (e) => {
+  materialControls.whaleScale = Number(e.target.value);
+  setStatus(`Animal size: ${materialControls.whaleScale.toFixed(2)}x`);
+});
+whaleStartXInput?.addEventListener("input", (e) => {
+  materialControls.whaleStartX = Number(e.target.value);
+});
+whaleStartYInput?.addEventListener("input", (e) => {
+  materialControls.whaleStartY = Number(e.target.value);
+  importSurfaceGroup.position.y = (materialControls.nucleusYOffset ?? 0) + materialControls.whaleStartY;
+});
+whaleStartZInput?.addEventListener("input", (e) => {
+  materialControls.whaleStartZ = Number(e.target.value);
+});
+whaleRotationXInput?.addEventListener("input", (e) => {
+  materialControls.whaleRotationX = Number(e.target.value);
+});
+whaleRotationYInput?.addEventListener("input", (e) => {
+  materialControls.whaleRotationY = Number(e.target.value);
+});
+whaleRotationZInput?.addEventListener("input", (e) => {
+  materialControls.whaleRotationZ = Number(e.target.value);
+});
+particleReturnSpeedInput?.addEventListener("input", (e) => {
+  materialControls.particleReturnSpeed = Number(e.target.value);
+  setStatus(`Particle return speed: ${materialControls.particleReturnSpeed.toFixed(2)}`);
+});
+particleFallStrengthInput?.addEventListener("input", (e) => {
+  materialControls.particleFallStrength = Number(e.target.value);
+  setStatus(`Particle fall strength: ${materialControls.particleFallStrength.toFixed(2)}`);
+});
+particleSprayGravityInput?.addEventListener("input", (e) => {
+  materialControls.particleSprayGravity = Number(e.target.value);
+  setStatus(`Spray gravity: ${materialControls.particleSprayGravity.toFixed(1)}`);
+});
+particleSprayHeightInput?.addEventListener("input", (e) => {
+  materialControls.particleSprayHeight = Number(e.target.value);
+  setStatus(`Spray height: ${materialControls.particleSprayHeight.toFixed(2)}`);
+});
+particlePierceReachInput?.addEventListener("input", (e) => {
+  materialControls.particlePierceReach = Number(e.target.value);
+  setStatus(`Pierce reach: ${materialControls.particlePierceReach.toFixed(2)}`);
+});
+particleCoreTightnessInput?.addEventListener("input", (e) => {
+  materialControls.particleCoreTightness = Number(e.target.value);
+  setStatus(`Pierce tightness: ${materialControls.particleCoreTightness.toFixed(2)}`);
+});
+particleColorInput?.addEventListener("input", (e) => {
+  materialControls.particleColor = e.target.value;
+  applyMaterialControls();
+});
+particleShapeInput?.addEventListener("input", (e) => {
+  materialControls.particleShape = e.target.value;
+  setStatus(`Particle shape: ${materialControls.particleShape}`);
+  applyMaterialControls();
+});
+sceneBackgroundColorInput?.addEventListener("input", (e) => {
+  materialControls.sceneBackgroundColor = e.target.value;
+  setStatus(`Scene background: ${materialControls.sceneBackgroundColor}`);
+  applyMaterialControls();
+});
+particleThicknessInput?.addEventListener("input", (e) => {
+  materialControls.particleThickness = Number(e.target.value);
+  setStatus(`Particle thickness: ${materialControls.particleThickness.toFixed(2)}`);
+});
+waveAmplitudeInput?.addEventListener("input", (e) => {
+  materialControls.waveAmplitude = Number(e.target.value);
+  setStatus(`Wave amplitude: ${materialControls.waveAmplitude.toFixed(2)}`);
+});
+waveSpeedInput?.addEventListener("input", (e) => {
+  materialControls.waveSpeed = Number(e.target.value);
+  setStatus(`Wave speed: ${materialControls.waveSpeed.toFixed(2)}`);
+});
+waveAggressionInput?.addEventListener("input", (e) => {
+  materialControls.waveAggression = Number(e.target.value);
+  setStatus(`Wave aggression: ${materialControls.waveAggression.toFixed(2)}`);
+});
+pierceRippleLeadInput?.addEventListener("input", (e) => {
+  materialControls.pierceRippleLead = Number(e.target.value);
+  setStatus(`Pierce ripple lead: ${materialControls.pierceRippleLead.toFixed(2)}`);
+});
+pierceRippleStrengthInput?.addEventListener("input", (e) => {
+  materialControls.pierceRippleStrength = Number(e.target.value);
+  setStatus(`Pierce ripple strength: ${materialControls.pierceRippleStrength.toFixed(2)}`);
+});
+pierceRippleWidthInput?.addEventListener("input", (e) => {
+  materialControls.pierceRippleWidth = Number(e.target.value);
+  setStatus(`Pierce ripple width: ${materialControls.pierceRippleWidth.toFixed(2)}`);
+});
+pierceRippleSpeedInput?.addEventListener("input", (e) => {
+  materialControls.pierceRippleSpeed = Number(e.target.value);
+  setStatus(`Pierce ripple speed: ${materialControls.pierceRippleSpeed.toFixed(2)}`);
+});
+pierceStartInput?.addEventListener("input", (e) => {
+  materialControls.pierceStart = Number(e.target.value);
+  setStatus(`Pierce start: ${materialControls.pierceStart.toFixed(2)}`);
+});
+tipBiasInput?.addEventListener("input", (e) => {
+  materialControls.tipBias = Number(e.target.value);
+  setStatus(`Tip bias: ${materialControls.tipBias.toFixed(2)}`);
 });
 lightDistanceInput?.addEventListener("input", (e) => {
   materialControls.lightDistance = Number(e.target.value);
@@ -2130,7 +2890,17 @@ function buildExportSnapshot() {
       nucleusShape: materialControls.nucleusShape,
       nucleusCornerRadius: round4(materialControls.nucleusCornerRadius ?? 0),
       nucleusSize: round4(materialControls.nucleusSize),
+      creatureType: getCreatureType(materialControls.creatureType),
+      movementProfile: materialControls.movementProfile || "linked",
       nucleusYOffset: round4(materialControls.nucleusYOffset),
+      whaleScale: round4(materialControls.whaleScale ?? 1),
+      whaleStartX: round4(materialControls.whaleStartX ?? 0),
+      whaleStartY: round4(materialControls.whaleStartY ?? -11),
+      whaleStartZ: round4(materialControls.whaleStartZ ?? 0),
+      whaleRotationX: round4(materialControls.whaleRotationX ?? 0),
+      whaleRotationY: round4(materialControls.whaleRotationY ?? 0),
+      whaleRotationZ: round4(materialControls.whaleRotationZ ?? 0),
+      sceneBackgroundColor: materialControls.sceneBackgroundColor || "#101824",
       lightDistance: round4(materialControls.lightDistance ?? 1),
       nucleusColor: materialControls.nucleusColor,
       nucleusOpacity: round4(materialControls.nucleusOpacity),
@@ -2175,6 +2945,24 @@ function buildExportSnapshot() {
       nucleusBloomStrength: round4(materialControls.nucleusBloomStrength ?? 0),
       nucleusBloomRadius: round4(materialControls.nucleusBloomRadius ?? 0),
       nucleusBloomThreshold: round4(materialControls.nucleusBloomThreshold ?? 0),
+      particleReturnSpeed: round4(materialControls.particleReturnSpeed ?? 0.65),
+      particleFallStrength: round4(materialControls.particleFallStrength ?? 1.15),
+      particleSprayGravity: round4(materialControls.particleSprayGravity ?? 24),
+      particleSprayHeight: round4(materialControls.particleSprayHeight ?? 1.15),
+      particlePierceReach: round4(materialControls.particlePierceReach ?? 1.25),
+      particleCoreTightness: round4(materialControls.particleCoreTightness ?? 1.2),
+      particleColor: materialControls.particleColor || "#e5f2ff",
+      particleShape: materialControls.particleShape || "pill",
+      particleThickness: round4(materialControls.particleThickness ?? 1),
+      waveAmplitude: round4(materialControls.waveAmplitude ?? 1),
+      waveSpeed: round4(materialControls.waveSpeed ?? 1),
+      waveAggression: round4(materialControls.waveAggression ?? 1),
+      pierceRippleLead: round4(materialControls.pierceRippleLead ?? 0.18),
+      pierceRippleStrength: round4(materialControls.pierceRippleStrength ?? 1),
+      pierceRippleWidth: round4(materialControls.pierceRippleWidth ?? 1),
+      pierceRippleSpeed: round4(materialControls.pierceRippleSpeed ?? 1),
+      pierceStart: round4(materialControls.pierceStart ?? WHALE_PRECONTACT_MARGIN),
+      tipBias: round4(materialControls.tipBias ?? 1.4),
       shadowContrast: round4(materialControls.shadowContrast ?? 1),
       opacity: round4(materialControls.opacity)
     },
@@ -2250,6 +3038,7 @@ html, body {
     <button id="reflectionImageBtn" type="button">Reflection Image</button>
     <input id="reflectionImageInput" type="file" accept=".exr,.hdr,image/*" style="display:none" />
     <button id="exportDataBtn" type="button">Export JSON</button>
+    <button id="exportConfigBtn" type="button">Export Config</button>
     <button id="exportWebflowBtn" type="button">Export Webflow HTML</button>
     <button id="saveStartupBtn" type="button">Save Startup</button>
     <button id="clearStartupBtn" type="button">Clear Startup</button>
@@ -2264,6 +3053,20 @@ html, body {
     <input id="nucleusCornerRadius" type="range" min="0" max="0.8" step="0.005" value="0.12" />
     <label for="nucleusYOffset">Nucleus Y Offset</label>
     <input id="nucleusYOffset" type="range" min="-6" max="6" step="0.01" value="0" />
+    <label for="whaleScale">Animal Size</label>
+    <input id="whaleScale" type="range" min="0.35" max="2.8" step="0.01" value="1" />
+    <label for="whaleStartX">Animal Start X</label>
+    <input id="whaleStartX" type="range" min="-6" max="6" step="0.01" value="0" />
+    <label for="whaleStartY">Animal Start Y</label>
+    <input id="whaleStartY" type="range" min="-16" max="2" step="0.01" value="-11" />
+    <label for="whaleStartZ">Animal Start Z</label>
+    <input id="whaleStartZ" type="range" min="-6" max="6" step="0.01" value="0" />
+    <label for="whaleRotationX">Animal Rotation X</label>
+    <input id="whaleRotationX" type="range" min="-180" max="180" step="1" value="-57" />
+    <label for="whaleRotationY">Animal Rotation Y</label>
+    <input id="whaleRotationY" type="range" min="-180" max="180" step="1" value="0" />
+    <label for="whaleRotationZ">Animal Rotation Z</label>
+    <input id="whaleRotationZ" type="range" min="-180" max="180" step="1" value="0" />
     <label for="lightDistance">Light Distance</label>
     <input id="lightDistance" type="range" min="0.4" max="6" step="0.01" value="1" />
     <label for="nucleusColor">Nucleus Color</label>
@@ -2369,6 +3172,13 @@ function exportSnapshotJson() {
   setStatus("Exported shape snapshot JSON.");
 }
 
+function exportConfigJson() {
+  const payload = buildStartupConfig();
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  downloadTextFile(`whale-scene-config-${stamp}.json`, JSON.stringify(payload, null, 2), "application/json");
+  setStatus("Exported config JSON.");
+}
+
 function exportWebflowEmbed() {
   const payload = buildExportSnapshot();
   const startupConfig = buildStartupConfig();
@@ -2379,6 +3189,7 @@ function exportWebflowEmbed() {
 }
 
 exportDataBtn?.addEventListener("click", exportSnapshotJson);
+exportConfigBtn?.addEventListener("click", exportConfigJson);
 exportWebflowBtn?.addEventListener("click", exportWebflowEmbed);
 saveStartupBtn?.addEventListener("click", () => {
   try {
@@ -2406,10 +3217,31 @@ const tempPointB = new THREE.Vector3();
 const tempPointC = new THREE.Vector3();
 const tempShadowCenter = new THREE.Vector3();
 const tempLabelDir = new THREE.Vector3();
-const axisX = new THREE.Vector3(1, 0, 0);
-const axisY = new THREE.Vector3(0, 1, 0);
-const axisZ = new THREE.Vector3(0, 0, 1);
-const autoRotateStepQ = new THREE.Quaternion();
+const whalePrevSurfaceLocal = new THREE.Vector3();
+const whaleVelocityLocal = new THREE.Vector3();
+const whaleForwardLocal = new THREE.Vector3(1, 0, 0);
+const whaleRightLocal = new THREE.Vector3(0, 0, 1);
+const whaleFlowLocal = new THREE.Vector3(1, 0, 0);
+const whaleContactProbes = [];
+const activeRipples = [];
+let landingScatterCycle = -1;
+let activePierceCycle = -1;
+const landingScatter = [];
+
+function refreshLandingScatter() {
+  landingScatter.length = 0;
+  for (let i = 0; i < LANDING_SCATTER_COUNT; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const orbit = 0.2 + Math.random() * 1.6;
+    landingScatter.push({
+      ox: Math.cos(angle) * orbit,
+      oz: Math.sin(angle) * orbit,
+      radius: 0.45 + Math.random() * 1.2,
+      strength: 0.4 + Math.random() * 0.8,
+      swirl: Math.random() * Math.PI * 2
+    });
+  }
+}
 
 function updateContactShadowPlane() {
   if (!contactShadowPlane.visible || contactShadowPlane.material.opacity <= 0) return;
@@ -2432,6 +3264,14 @@ function updateContactShadowPlane() {
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.1);
   const elapsed = clock.elapsedTime;
+  const movementProfile = getActiveMovementProfile();
+  const breachCycleSeconds = Math.max(0.1, movementProfile.cycleSeconds || 6.2);
+  updateActiveRipples(elapsed);
+  const breachCycle = Math.floor(elapsed / breachCycleSeconds);
+  if (breachCycle !== landingScatterCycle) {
+    landingScatterCycle = breachCycle;
+    refreshLandingScatter();
+  }
   group.getWorldPosition(tempShadowCenter);
   if (rotationTestLabel) {
     tempLabelDir.copy(tempShadowCenter).sub(camera.position).normalize();
@@ -2512,12 +3352,340 @@ function animate() {
   const importedOrbStyleActive =
     materialControls.nucleusShape === "crystal-orb" ||
     materialControls.nucleusShape === "liquid-core";
+  const ascentSplit = THREE.MathUtils.clamp(movementProfile.ascentSplit ?? 0.52, 0.2, 0.8);
+  const descentSpan = Math.max(0.0001, 1 - ascentSplit);
+  const breachPhase = (elapsed % breachCycleSeconds) / breachCycleSeconds;
+  const ascentPhase = Math.pow(
+    THREE.MathUtils.clamp(breachPhase / ascentSplit, 0, 1),
+    Math.max(0.2, movementProfile.ascentPow ?? 0.72)
+  );
+  const descentPhase = Math.pow(
+    THREE.MathUtils.clamp((breachPhase - ascentSplit) / descentSpan, 0, 1),
+    Math.max(0.2, movementProfile.descentPow ?? 1.28)
+  );
+  const breachPulse = breachPhase <= ascentSplit
+    ? Math.sin(ascentPhase * Math.PI * 0.5)
+    : Math.cos(descentPhase * Math.PI * 0.5);
+  const breachForce = Math.pow(breachPulse, Math.max(0.4, movementProfile.forcePow ?? 1.35));
+  const whaleStartY = materialControls.whaleStartY ?? -11;
+  const surfaceY = (materialControls.nucleusYOffset ?? 0) - 0.25;
+  const breachHeight =
+    (movementProfile.breachHeight ?? 4.7) +
+    Math.max(0, surfaceY - whaleStartY) +
+    (movementProfile.surfaceClearance ?? 1.15) +
+    (movementProfile.ascentBoost ?? 1.35);
+  let breachLift = whaleStartY + breachPulse * breachHeight;
+  const reentryDepthMix = THREE.MathUtils.smoothstep(
+    breachPhase,
+    THREE.MathUtils.clamp(movementProfile.reentryStart ?? 0.72, 0, 1),
+    THREE.MathUtils.clamp(movementProfile.reentryEnd ?? 0.98, 0, 1)
+  );
+  const minLandingY = surfaceY - Math.max(0.1, movementProfile.reentryMaxDepth ?? 1.2);
+  breachLift = Math.max(breachLift, THREE.MathUtils.lerp(whaleStartY, minLandingY, reentryDepthMix));
+  const whaleRotX = THREE.MathUtils.degToRad(materialControls.whaleRotationX ?? 0);
+  const whaleRotY = THREE.MathUtils.degToRad(materialControls.whaleRotationY ?? 0);
+  const whaleRotZ = THREE.MathUtils.degToRad(materialControls.whaleRotationZ ?? 0);
+  const whaleScale = THREE.MathUtils.clamp(materialControls.whaleScale ?? 1, 0.2, 4.0);
+  const descentMix = THREE.MathUtils.smoothstep(
+    breachPhase,
+    THREE.MathUtils.clamp(movementProfile.descentStart ?? 0.38, 0, 1),
+    THREE.MathUtils.clamp(movementProfile.descentEnd ?? 0.8, 0, 1)
+  );
+  const waveAmplitude = Math.max(0, materialControls.waveAmplitude ?? 1);
+  const waveSpeed = Math.max(0.1, materialControls.waveSpeed ?? 1);
+  const waveAggression = Math.max(0, materialControls.waveAggression ?? 1);
+  const surfaceInfluence = THREE.MathUtils.smoothstep(
+    (materialControls.nucleusYOffset ?? 0) + breachLift,
+    surfaceY - 1.8,
+    surfaceY + 0.45
+  );
+  const landingBurst = 0;
+  const descentTargetRotX = THREE.MathUtils.degToRad(movementProfile.descentRotXDeg ?? DESCENT_TARGET_ROT_X_DEG);
+  const descentTargetRotY = THREE.MathUtils.degToRad(movementProfile.descentRotYDeg ?? DESCENT_TARGET_ROT_Y_DEG);
+  const descentTargetRotZ = THREE.MathUtils.degToRad(movementProfile.descentRotZDeg ?? DESCENT_TARGET_ROT_Z_DEG);
+  const animatedWhaleRotX = THREE.MathUtils.lerp(whaleRotX, descentTargetRotX, descentMix);
+  const animatedWhaleRotY = THREE.MathUtils.lerp(whaleRotY, descentTargetRotY, descentMix);
+  const animatedWhaleRotZ = THREE.MathUtils.lerp(whaleRotZ, descentTargetRotZ, descentMix);
+  const animatedWhaleScale = THREE.MathUtils.lerp(
+    whaleScale,
+    THREE.MathUtils.clamp(movementProfile.descentTargetScale ?? DESCENT_TARGET_SCALE, 0.2, 2.6),
+    descentMix
+  );
+  const arcDistance = Math.max(0, movementProfile.arcDistance ?? 0);
+  const arcTravelStart = THREE.MathUtils.clamp(movementProfile.arcTravelStart ?? 0.12, 0, 0.95);
+  const arcTravelEnd = THREE.MathUtils.clamp(movementProfile.arcTravelEnd ?? 0.88, arcTravelStart + 0.01, 1);
+  const arcProgress = THREE.MathUtils.smoothstep(breachPhase, arcTravelStart, arcTravelEnd);
+  const arcForwardSign = movementProfile.arcForwardSign ?? 1;
+  const arcLateralAmount = movementProfile.arcLateralAmount ?? 0.24;
+  const baseForwardX = Math.cos(whaleRotY);
+  const baseForwardZ = Math.sin(whaleRotY);
+  const baseRightX = -baseForwardZ;
+  const baseRightZ = baseForwardX;
+  const arcForwardDistance = arcDistance * arcProgress * arcForwardSign;
+  const arcLateralDistance = arcDistance * arcLateralAmount * Math.sin(breachPhase * Math.PI * 2);
+  const arcOffsetX = baseForwardX * arcForwardDistance + baseRightX * arcLateralDistance;
+  const arcOffsetZ = baseForwardZ * arcForwardDistance + baseRightZ * arcLateralDistance;
+  const gracefulFallMix = THREE.MathUtils.smoothstep(breachPhase, 0.42, 0.82);
+  const endCalmMix = THREE.MathUtils.smoothstep(breachPhase, 0.78, 0.98);
+  updateSprayParticles(dt, materialControls.nucleusYOffset ?? 0);
+  importSurfaceGroup.position.set(
+    (materialControls.whaleStartX ?? 0) + arcOffsetX,
+    (materialControls.nucleusYOffset ?? 0) + breachLift,
+    (materialControls.whaleStartZ ?? 0) + arcOffsetZ
+  );
+  importSurfaceGroup.rotation.set(animatedWhaleRotX, animatedWhaleRotY, animatedWhaleRotZ);
+  importSurfaceGroup.scale.setScalar(animatedWhaleScale);
+  whaleVelocityLocal.copy(importSurfaceGroup.position).sub(whalePrevSurfaceLocal);
+  if (dt > 0.000001) whaleVelocityLocal.multiplyScalar(1 / dt);
+  const whaleSpeed = whaleVelocityLocal.length();
+  const descendingSpeed = Math.max(0, -whaleVelocityLocal.y);
+  const landingImpact = THREE.MathUtils.clamp(descendingSpeed * 0.34, 0, 2.2) * landingBurst;
+  if (whaleSpeed > 0.0001) {
+    whaleFlowLocal.copy(whaleVelocityLocal).multiplyScalar(1 / whaleSpeed);
+  } else {
+    whaleFlowLocal.set(Math.cos(whaleRotY), 0, Math.sin(whaleRotY));
+  }
+  whaleForwardLocal.set(1, 0, 0).applyEuler(importSurfaceGroup.rotation).setY(0);
+  if (whaleForwardLocal.lengthSq() < 0.0001) whaleForwardLocal.copy(whaleFlowLocal);
+  else whaleForwardLocal.normalize();
+  whaleRightLocal.set(-whaleForwardLocal.z, 0, whaleForwardLocal.x);
   if (importedOrbStyleActive && importSurfaceGroup.visible && importSurfaceGroup.children.length) {
     importSurfaceGroup.traverse((child) => {
       if (!child.isMesh || !child.geometry?.userData?.basePositions) return;
       applyLiquidOrbDeform(child, elapsed);
     });
   }
+  updateWhaleWaterContactRipples(
+    surfaceY,
+    dt,
+    elapsed,
+    landingImpact,
+    breachPhase,
+    breachCycle,
+    movementProfile.piercePhaseEnd
+  );
+  if (breachPhase > 0.5 && activeRipples.length) activeRipples.length = 0;
+  whaleSurfaceLocal.copy(importSurfaceGroup.position);
+  const whaleDepthBelowSurface = Math.max(0, surfaceY - whaleSurfaceLocal.y);
+  const nearSurfaceMix = 1 - THREE.MathUtils.smoothstep(whaleDepthBelowSurface, 0.08, 1.45);
+  const underSurfaceRelease = 1 - THREE.MathUtils.smoothstep(whaleDepthBelowSurface, 0.24, 1.55);
+  const whaleRespawnHidden = breachPhase > 0.82 && whaleDepthBelowSurface > 1.2;
+  importSurfaceGroup.visible = importedSurfaceVisible && !whaleRespawnHidden && importSurfaceGroup.children.length > 0;
+  importedSurfaceMaterial.opacity = importedSurfaceBaseOpacity;
+  importedSurfaceMaterial.transparent = importedSurfaceMaterial.opacity < 0.999;
+  importedSurfaceMaterial.depthWrite = importedSurfaceMaterial.opacity >= 0.999;
+  const particleReturnSpeed = Math.max(0.1, materialControls.particleReturnSpeed ?? 0.65);
+  const particleFallStrength = Math.max(0, materialControls.particleFallStrength ?? 1.15);
+  const particlePierceReach = Math.max(0.4, materialControls.particlePierceReach ?? 1.25);
+  const particleCoreTightness = Math.max(0.4, materialControls.particleCoreTightness ?? 1.2);
+  const pierceEnergyMix = 1 - THREE.MathUtils.smoothstep(breachPhase, 0.54, 0.72);
+  const rippleAfterMix = 1 - THREE.MathUtils.smoothstep(breachPhase, 0.5, 0.6);
+  const landingSoftMix = 1 - THREE.MathUtils.smoothstep(breachPhase, 0.58, 0.86);
+  for (let i = 0; i < capsuleField.length; i++) {
+    const point = capsuleField[i];
+    const swell =
+      (
+        Math.sin(point.x * 0.58 + elapsed * 1.7 * waveSpeed + point.waveOffset) * 0.22 +
+        Math.cos(point.z * 0.46 + elapsed * 1.15 * waveSpeed + point.waveOffset) * 0.18 +
+        Math.sin(point.radial * 0.45 - elapsed * 0.9 * waveSpeed) * 0.08
+      ) * waveAmplitude;
+    const chop =
+      (
+        Math.sin((point.x + point.z) * 0.24 - elapsed * 2.3 * waveSpeed + point.waveOffset * 0.7) * 0.08 +
+        Math.sin(point.x * 0.92 - elapsed * 1.45 * waveSpeed + point.waveOffset * 1.6) * 0.05 +
+        Math.cos(point.z * 0.88 + elapsed * 1.2 * waveSpeed - point.waveOffset * 0.9) * 0.04
+      ) * waveAmplitude * (0.72 + waveAggression * 0.48);
+    const naturalNoise =
+      (
+        Math.sin(point.x * 0.18 + point.z * 0.11 + point.waveOffset * 0.6) * 0.06 * point.cluster +
+        Math.cos(point.z * 0.16 - elapsed * 0.55 * waveSpeed + point.waveOffset) * 0.03
+      ) * THREE.MathUtils.lerp(0.65, 1.45, Math.min(1, waveAggression / 3));
+    const offsetX = point.x - whaleSurfaceLocal.x;
+    const offsetZ = point.z - whaleSurfaceLocal.z;
+    const distance = Math.sqrt(offsetX * offsetX + offsetZ * offsetZ);
+    const waterBreakForce = breachForce * surfaceInfluence * nearSurfaceMix;
+    const pushRadius = (1.9 + waterBreakForce * 4.8) * particlePierceReach;
+    const pushEnvelope = Math.max(0, 1 - distance / pushRadius);
+    const tightRadius = Math.max(0.35, pushRadius * THREE.MathUtils.lerp(0.92, 0.42, Math.min(1, (particleCoreTightness - 0.4) / 2.1)));
+    const tightEnvelope = Math.max(0, 1 - distance / tightRadius);
+    const coreBoost = Math.pow(tightEnvelope, THREE.MathUtils.lerp(1.15, 2.2, Math.min(1, (particleCoreTightness - 0.4) / 2.1)));
+    const pushStrength =
+      Math.pow(pushEnvelope, THREE.MathUtils.lerp(1.2, 2.35, Math.min(1, (particleCoreTightness - 0.4) / 2.1))) *
+      waterBreakForce *
+      (1 + coreBoost * (0.55 + waveAggression * 0.35));
+    const dirX = distance > 0.0001 ? offsetX / distance : Math.cos(point.waveOffset);
+    const dirZ = distance > 0.0001 ? offsetZ / distance : Math.sin(point.waveOffset);
+    const along = offsetX * whaleForwardLocal.x + offsetZ * whaleForwardLocal.z;
+    const across = offsetX * whaleRightLocal.x + offsetZ * whaleRightLocal.z;
+    const bodyLength = 2.6 + animatedWhaleScale * 1.8;
+    const bodyWidth = 1.1 + animatedWhaleScale * 0.9;
+    const avoidCore =
+      Math.max(0, 1 - Math.abs(along) / bodyLength) *
+      Math.max(0, 1 - Math.abs(across) / bodyWidth);
+    const speedBoost = Math.min(2.2, whaleSpeed * 0.18);
+    const avoidStrength = whaleDepthBelowSurface > 0.02
+      ? 0
+      : Math.pow(avoidCore, 1.65) *
+        (0.12 + waterBreakForce * 2.3 + speedBoost * 0.05) *
+        underSurfaceRelease;
+    const awaySign = across >= 0 ? 1 : -1;
+    const awayX = whaleRightLocal.x * awaySign * 0.68 + dirX * 0.32;
+    const awayZ = whaleRightLocal.z * awaySign * 0.68 + dirZ * 0.32;
+    const splashLift =
+      pushStrength *
+      (0.92 + (1 - Math.abs(breachPhase - 0.55)) * 1.45) *
+      pierceEnergyMix *
+      landingSoftMix *
+      (1 - endCalmMix * 0.55);
+    const outward = pushStrength * (0.8 + breachPhase * 2.45) * nearSurfaceMix * pierceEnergyMix * landingSoftMix;
+    const wakeRear = Math.max(0, -along);
+    const wakeCore =
+      Math.max(0, 1 - wakeRear / (5.4 + animatedWhaleScale * 2.1)) *
+      Math.max(0, 1 - Math.abs(across) / (2.5 + animatedWhaleScale * 1.3));
+    const wakePull = wakeCore * (0.03 + waterBreakForce * 0.18 + speedBoost * 0.012) * nearSurfaceMix * landingSoftMix;
+    const wakeSwirl =
+      Math.sin(elapsed * 2.1 + along * 0.85 + point.waveOffset) *
+      wakeCore *
+      (0.02 + waterBreakForce * 0.11) *
+      nearSurfaceMix *
+      landingSoftMix *
+      (1 - endCalmMix * 0.8);
+    const tailWake = wakeCore * waterBreakForce * 0.85 * nearSurfaceMix * landingSoftMix * (1 - endCalmMix * 0.7);
+    const landingPushX = 0;
+    const landingPushZ = 0;
+    const landingLift = 0;
+    let ripplePushX = 0;
+    let ripplePushZ = 0;
+    let rippleLift = 0;
+    for (let j = 0; j < activeRipples.length; j++) {
+      const ripple = activeRipples[j];
+      const rippleAge = elapsed - ripple.startTime;
+      if (rippleAge < 0 || rippleAge > ripple.life) continue;
+      const ageMix = rippleAge / ripple.life;
+      const radius = rippleAge * ripple.speed;
+      const dx = point.x - ripple.x;
+      const dz = point.z - ripple.z;
+      const rippleDistance = Math.sqrt(dx * dx + dz * dz);
+      const radialX = rippleDistance > 0.0001 ? dx / rippleDistance : Math.cos(point.waveOffset);
+      const radialZ = rippleDistance > 0.0001 ? dz / rippleDistance : Math.sin(point.waveOffset);
+      const rippleReach = Math.max(ripple.width * 2.6, radius + ripple.width * 4.8);
+      const bodyEnvelope = Math.max(0, 1 - rippleDistance / rippleReach);
+      if (bodyEnvelope <= 0) continue;
+      const envelope =
+        Math.pow(bodyEnvelope, 1.45) *
+        Math.pow(1 - ageMix, 1.2) *
+        rippleAfterMix *
+        (1 - endCalmMix * 0.65);
+      if (envelope <= 0.0001) continue;
+      const innerLift = Math.sin((1 - ageMix) * Math.PI * 0.85) * envelope * ripple.strength * 0.32;
+      rippleLift += innerLift;
+      const ripplePush = envelope * ripple.strength * ripple.push * 0.9;
+      ripplePushX += radialX * ripplePush;
+      ripplePushZ += radialZ * ripplePush;
+      const sprayEnvelope = Math.max(0, 1 - rippleDistance / (rippleReach * 1.12));
+      const sprayPush = Math.pow(sprayEnvelope, 1.4) * ripple.strength * ripple.push * 0.42;
+      ripplePushX += radialX * sprayPush;
+      ripplePushZ += radialZ * sprayPush;
+      rippleLift += sprayEnvelope * ripple.strength * 0.08;
+    }
+    const targetX =
+      point.x +
+      Math.sin(elapsed * point.drift + point.z) * 0.05 +
+      dirX * outward +
+      awayX * avoidStrength +
+      whaleFlowLocal.x * wakePull +
+      whaleRightLocal.x * wakeSwirl -
+      tailWake * 0.05 +
+      ripplePushX +
+      landingPushX;
+    const targetY =
+      -1.1 +
+      swell +
+      chop +
+      naturalNoise +
+      splashLift * 1.9 +
+      tailWake * 0.45 +
+      wakeCore * speedBoost * 0.04 +
+      rippleLift +
+      landingBurst * 0.22 +
+      landingLift;
+    const baseSurfaceY = -1.1 + swell + chop + naturalNoise;
+    const currentLift = Math.max(0, capsuleSmoothReady ? capsuleSmoothY[i] - baseSurfaceY : 0);
+    const targetLift = Math.max(0, targetY - baseSurfaceY);
+    const settlingActive = gracefulFallMix > 0.001 || whaleDepthBelowSurface > 0.02;
+    if (settlingActive && currentLift > 0.001) {
+      capsuleFallVelocityY[i] += dt * (0.16 + gracefulFallMix * 0.85 + whaleDepthBelowSurface * 0.22) * particleFallStrength;
+      capsuleFallVelocityY[i] *= 1 - Math.min(0.12, dt * 0.9);
+    } else {
+      capsuleFallVelocityY[i] *= Math.max(0, 1 - dt * 8.0);
+    }
+    const settleDown =
+      currentLift *
+      (1 - underSurfaceRelease) *
+      (0.045 + endCalmMix * 0.045 + (1 - landingSoftMix) * 0.02) *
+      particleFallStrength;
+    const descentBleed = THREE.MathUtils.lerp(targetLift, Math.min(targetLift, currentLift), 0.45);
+    const gracefulLift = THREE.MathUtils.lerp(
+      targetLift,
+      descentBleed * (1 - gracefulFallMix) + currentLift * (1 - gracefulFallMix * 0.82),
+      gracefulFallMix
+    );
+    const gracefulFall =
+      currentLift *
+      gracefulFallMix *
+      (0.012 + descendingSpeed * 0.004 + whaleDepthBelowSurface * 0.006) *
+      particleFallStrength;
+    const gravityFall = capsuleFallVelocityY[i] * Math.min(currentLift, 1.8);
+    const settledTargetY = Math.max(
+      baseSurfaceY - 0.04,
+      baseSurfaceY + Math.max(0, gracefulLift - settleDown - gracefulFall - gravityFall)
+    );
+    const targetZ =
+      point.z +
+      Math.cos(elapsed * point.drift + point.x) * 0.05 +
+      dirZ * outward +
+      awayZ * avoidStrength +
+      whaleFlowLocal.z * wakePull +
+      whaleRightLocal.z * wakeSwirl +
+      ripplePushZ +
+      landingPushZ;
+    if (!capsuleSmoothReady) {
+      capsuleSmoothX[i] = targetX;
+      capsuleSmoothY[i] = settledTargetY;
+      capsuleSmoothZ[i] = targetZ;
+      capsuleFallVelocityY[i] = 0;
+    }
+    const returnDamp =
+      (THREE.MathUtils.lerp(8.0, 15.0, landingBurst) +
+      (1 - underSurfaceRelease) * 7.0 +
+      gracefulFallMix * 1.35 +
+      endCalmMix * 2.5) * particleReturnSpeed;
+    const blend = 1 - Math.exp(-dt * returnDamp);
+    capsuleSmoothX[i] += (targetX - capsuleSmoothX[i]) * blend;
+    capsuleSmoothY[i] += (settledTargetY - capsuleSmoothY[i]) * blend;
+    capsuleSmoothZ[i] += (targetZ - capsuleSmoothZ[i]) * blend;
+    if (capsuleSmoothY[i] <= baseSurfaceY + 0.01) capsuleFallVelocityY[i] = 0;
+    capsuleDummy.position.set(capsuleSmoothX[i], capsuleSmoothY[i], capsuleSmoothZ[i]);
+    capsuleDummy.rotation.set(
+      Math.PI * 0.5 + Math.sin(elapsed * 0.8 + point.waveOffset) * 0.12 + splashLift * 0.42 + rippleLift * 0.14,
+      Math.PI * 0.25 + point.waveOffset * 0.35 + Math.sin(elapsed * 0.18 + point.x * 0.08) * 0.16 + pushStrength * 0.85 + ripplePushX * 0.08,
+      Math.PI * 0.18 + Math.cos(elapsed * 0.95 + point.waveOffset) * 0.1 + dirZ * pushStrength * 0.32 + ripplePushZ * 0.08
+    );
+    const thicknessScale = Math.max(0.4, materialControls.particleThickness ?? 1);
+    const scale =
+      0.56 +
+      point.scale * 0.2 +
+      point.cluster * 0.08 +
+      Math.max(swell + chop + naturalNoise, -0.08) * 0.16 +
+      splashLift * 0.14 +
+      Math.abs(rippleLift) * 0.06;
+    capsuleDummy.scale.set(scale * thicknessScale, scale, scale * thicknessScale);
+    capsuleDummy.updateMatrix();
+    capsules.setMatrixAt(i, capsuleDummy.matrix);
+  }
+  if (!capsuleSmoothReady) capsuleSmoothReady = true;
+  capsules.instanceMatrix.needsUpdate = true;
+  whalePrevSurfaceLocal.copy(importSurfaceGroup.position);
 
   const t = clock.elapsedTime;
   const lightTargetY = materialControls.nucleusYOffset || 0;
@@ -2544,8 +3712,6 @@ function animate() {
   reflectionSceneryGroup.rotation.y = 0;
   reflectionSceneryGroup.position.y = 0;
 
-  autoRotateStepQ.setFromAxisAngle(axisY, dt * 0.16);
-  group.quaternion.multiply(autoRotateStepQ);
   group.position.set(0, 0, 0);
   updateContactShadowPlane();
   updateNucleusDynamicEnv();
@@ -2572,10 +3738,7 @@ function applyLoadedStartupSceneState() {
     camera.zoom = zoom;
     camera.updateProjectionMatrix();
   }
-  const rot = Array.isArray(sceneState.groupRotation) ? sceneState.groupRotation : null;
-  if (rot && rot.length === 3 && rot.every((n) => Number.isFinite(Number(n)))) {
-    group.rotation.set(Number(rot[0]), Number(rot[1]), Number(rot[2]));
-  }
+  group.rotation.set(0, 0, 0);
   forceApplyNucleusYOffset();
   controls.update();
 }
@@ -2585,28 +3748,42 @@ updateNucleusControlSections(materialControls.nucleusShape);
 
 async function bootScene() {
   const startupEnvUrl = EMBED_STARTUP_ENV_URL || DEFAULT_REFLECTION_IMAGE_URL;
-  const startupMeshUrl = EMBED_STARTUP_MESH_URL || DEFAULT_STARTUP_MESH_URL;
+  const startupCreature = getCreatureType(creatureSelectInput?.value || materialControls.creatureType || "whale");
+  const startupCreatureAsset = getCreatureAsset(startupCreature);
+  const startupMeshUrl = EMBED_STARTUP_MESH_URL || startupCreatureAsset.url;
+  const startupMeshFilename = EMBED_STARTUP_MESH_URL ? DEFAULT_STARTUP_MESH_FILENAME : startupCreatureAsset.filename;
   let startupReflectionLoaded = await loadReflectionImageEnvFromUrl(startupEnvUrl, "Startup reflection");
   if (!startupReflectionLoaded) {
     startupReflectionLoaded = await loadReflectionImageEnvFromUrl("./citrus_orchard_road_puresky_1k.exr", "Startup reflection");
   }
   let startupMeshLoaded = await loadCustomMeshFromUrl(
     startupMeshUrl,
-    DEFAULT_STARTUP_MESH_FILENAME,
+    startupMeshFilename,
     "Startup mesh loaded"
   );
   if (!startupMeshLoaded) {
-    startupMeshLoaded = await loadCustomMeshFromUrl("./flower.glb", DEFAULT_STARTUP_MESH_FILENAME, "Startup mesh loaded");
+    startupMeshLoaded = await loadCustomMeshFromUrl("./whale.glb", DEFAULT_STARTUP_MESH_FILENAME, "Startup mesh loaded");
+  }
+  if (!startupMeshLoaded && startupCreature === "dolphin") {
+    startupMeshLoaded = await loadCustomMeshFromUrl("./dolphin.glb", DEFAULT_DOLPHIN_MESH_FILENAME, "Startup mesh loaded");
   }
   if (!startupMeshLoaded && shapeSelect.value === "custom-mesh") {
     shapeSelect.value = "sphere";
+  } else if (startupMeshLoaded) {
+    materialControls.creatureType = startupCreature;
+    if (startupCreature === "dolphin") {
+      const minScale = Number(whaleScaleInput?.min ?? 0.35);
+      materialControls.whaleScale = minScale;
+      setControlValue(whaleScaleInput, minScale);
+    }
+    if (creatureSelectInput) creatureSelectInput.value = startupCreature;
   }
   applyPresetFromSelect();
   forceApplyNucleusYOffset();
   applyLoadedStartupSceneState();
   forceApplyNucleusYOffset();
   if (startupReflectionLoaded && startupMeshLoaded) {
-    setStatus("Startup assets loaded (EXR + flower), scene state restored.");
+    setStatus(`Startup assets loaded (EXR + ${getCreatureAsset(materialControls.creatureType).label.toLowerCase()}), scene state restored.`);
   } else if (startupReflectionLoaded) {
     setStatus("Startup reflection loaded; startup mesh failed.");
   } else if (startupMeshLoaded) {
